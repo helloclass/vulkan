@@ -606,7 +606,7 @@ void GameObject::createDescriptorSetLayout() {
 }
 
 void GameObject::createComputePipeline() {
-    std::vector<char> compShaderCode = readFile("/home/sbj/바탕화면/VULKAN/spv/Compute/exam.spv");
+    std::vector<char> compShaderCode = readFile("spv/Compute/exam.spv");
     VkShaderModule compShaderModule = createShaderModule(compShaderCode);
 
     VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo{};
@@ -1461,13 +1461,13 @@ void GameObject::loadModel() {
         for (const auto& index : shape.mesh.indices) {
             Vertex vertex{};
             vertex.pos = {
-                attrib.vertices[3 * index.vertex_index + 0],
+                attrib.vertices[3 * index.vertex_index],
                 attrib.vertices[3 * index.vertex_index + 1],
                 attrib.vertices[3 * index.vertex_index + 2]
             };
 
             vertex.texCoord = {
-                attrib.texcoords[2 * index.texcoord_index + 0],
+                attrib.texcoords[2 * index.texcoord_index],
                 1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
             };
 
@@ -1494,6 +1494,8 @@ void GameObject::loadModel() {
                 vertices[size - 1].normal = Normal;
                 vertices[size - 2].normal = Normal;
                 vertices[size - 3].normal = Normal;
+
+                //std::cout << "< " << Normal.x << ", " << Normal.y << ", " << Normal.z << " >" << std::endl;
             }
         }
     }

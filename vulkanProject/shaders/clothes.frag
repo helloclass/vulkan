@@ -20,21 +20,22 @@ struct Material {
 }; 
 
 void main() {
-    outColor = (normalize(lightPosition) > 0.0f)? vec4(1.0f) : vec4(0.0f);
-    return ;
+    vec3 campos = lightPosition;
 
-    vec3 lightColor = vec3(1.5f);
+    outColor = vec4(min(dot(normalVector, campos) * 50.0f, 0.5f));
+
+    vec3 lightColor = vec3(1.0f);
 
     Material material;
 
     // 주변광
-    material.ambient = vec3 ( 0.3f );
+    material.ambient = vec3 ( 0.6f );
     // 산광
     material.diffuse    = vec3 ( 0.0f, 0.0f, 0.4f );
     // 반사광
-    material.specular   = vec3 ( normalize(texture(texSampler, fragTexCoord)) * 10.0f );
+    material.specular   = vec3 ( normalize(texture(texSampler, fragTexCoord)) * 5.0f );
     // 반사광 집중도
-    material.shininess  = ( 256.0f );
+    material.shininess  = ( 128.0f );
 
     // Ambient
     vec3 ambient = vec3(1.0) * lightColor * material.ambient;
@@ -56,5 +57,5 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = vec3(1.0) * spec * lightColor * material.specular;
 
-    outColor = texture(texSampler, fragTexCoord) * vec4(ambient + diffuse + specular, 1.0f);
+    outColor += texture(texSampler, fragTexCoord) * vec4(ambient + diffuse + specular, 1.0f);
 }

@@ -1,3 +1,4 @@
+#include <unistd.h>
 #include "vulkan.cpp"
 
 using namespace std;
@@ -11,12 +12,16 @@ GameObject* lightPos;
 
 UI* button;
 
+std::string getAbsolutePath();
+
 class standardRoutine : public routine {
 public:
     float inv = -1.0f;
 
     void Awake() override{
         routine::Awake();
+
+        std::string pwd = getAbsolutePath();
 
         mainCam = createCamera(glm::vec3(2.0f, 1.0f, 5.0f));
         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
@@ -33,7 +38,9 @@ public:
         charactor[1]->_initParam.fragPath = "spv/GameObject/glass.spv";
         charactor[2]->_initParam.fragPath = "spv/GameObject/leather.spv";
 
+
         lightPos = createObject("lightPos", "models/Light.obj", "textures/Light.png", mainLight->getPosition(), glm::vec3(0.0f), glm::vec3(0.1f));
+        lightPos->_initParam.fragPath = "spv/GameObject/glass.spv";
 
         button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 100.0f, 100.0f));
     }
@@ -217,4 +224,13 @@ uint32_t getUIIdx() {
         std::cout << (int)_UIMAP[(int)ypos][(int)xpos] << std::endl;
 
     return 0;
+}
+
+std::string getAbsolutePath() {
+    std::string buffer;
+    buffer.resize(1000);
+
+    if (getcwd(buffer.data(), 1000) != NULL)
+        return buffer;
+    return std::string();
 }

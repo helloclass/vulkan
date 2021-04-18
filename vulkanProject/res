@@ -1,19 +1,22 @@
-_PATH=/home/sbj/다운로드/1.1.85.0/install/bin
-_SHADER=/home/sbj/바탕화면/VULKAN/shaders
-_SPV=/home/sbj/바탕화면/VULKAN/spv
+_PATH=$(pwd)
 
-$_PATH/glslc  $_SHADER/shader.vert -o    $_SPV/GameObject/vert.spv
-$_PATH/glslc  $_SHADER/UI.vert -o        $_SPV/UI/vert.spv
+_GLSLC_PATH=/home/sbj/다운로드/1.1.85.0/install/bin
+_SHADER=$_PATH/shaders
+_SPV=$_PATH/spv
 
-$_PATH/glslc  $_SHADER/clothes.frag -o   $_SPV/GameObject/clothes.spv
-$_PATH/glslc  $_SHADER/leather.frag -o   $_SPV/GameObject/leather.spv
-$_PATH/glslc  $_SHADER/glass.frag -o     $_SPV/GameObject/glass.spv
-$_PATH/glslc  $_SHADER/soft.frag -o      $_SPV/GameObject/soft.spv
-$_PATH/glslc  $_SHADER/UI.frag -o        $_SPV/UI/frag.spv
+$_GLSLC_PATH/glslc  $_SHADER/shader.vert -o    $_SPV/GameObject/vert.spv
+$_GLSLC_PATH/glslc  $_SHADER/UI.vert -o        $_SPV/UI/vert.spv
 
-$_PATH/glslc  $_SHADER/exam.comp -o      $_SPV/Compute/exam.spv
+$_GLSLC_PATH/glslc  $_SHADER/base.frag -o      $_SPV/GameObject/base.spv
+$_GLSLC_PATH/glslc  $_SHADER/clothes.frag -o   $_SPV/GameObject/clothes.spv
+$_GLSLC_PATH/glslc  $_SHADER/leather.frag -o   $_SPV/GameObject/leather.spv
+$_GLSLC_PATH/glslc  $_SHADER/glass.frag -o     $_SPV/GameObject/glass.spv
+$_GLSLC_PATH/glslc  $_SHADER/soft.frag -o      $_SPV/GameObject/soft.spv
+$_GLSLC_PATH/glslc  $_SHADER/UI.frag -o        $_SPV/UI/frag.spv
 
-g++ -std=c++17 -I /home/sbj/VulkanProject/stb -I /home/sbj/VulkanProject/tinyobjloader -I /home/sbj/바탕화면/VULKAN -o VulkanTest main.cpp -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr -DVKB_VALIDATION_LAYERS=ON
+$_GLSLC_PATH/glslc  $_SHADER/exam.comp -o      $_SPV/Compute/exam.spv
+
+g++ -std=c++17 -I /home/sbj/VulkanProject/stb -I /home/sbj/VulkanProject/tinyobjloader -I $_PATH -o VulkanTest main.cpp -lglfw -lvulkan -ldl -lpthread -lX11 -lXrandr
 
 ./VulkanTest
 rm -rf VulkanTest

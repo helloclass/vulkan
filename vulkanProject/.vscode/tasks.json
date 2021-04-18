@@ -1,0 +1,35 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: g++ 활성 파일 빌드",
+			"command": "/bin/g++",
+			"args": [
+				"-std=c++17",
+                "-I",
+                "/home/sbj/VulkanProject/stb",
+                "-I",
+                "/home/sbj/VulkanProject/tinyobjloader",
+                "-g",
+                "/home/sbj/바탕화면/VULKAN/vulkan/vulkanProject/main.cpp",
+                "-o",
+                "${fileDirname}/${fileBasenameNoExtension}",
+                "-lglfw",
+                "-lvulkan",
+                "-ldl",
+                "-lpthread",
+                "-lX11",
+                "-lXrandr"
+			],
+			"options": {
+				"cwd": "${workspaceFolder}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "컴파일러: /bin/g++"
+		}
+	]
+}

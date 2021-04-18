@@ -923,10 +923,68 @@ public:
     };
 };
 
+class ColliderBox {
+public: 
+    float posX, posY, posZ;
+    float sizeX, sizeY, sizeZ;
+
+    void setSize2D(float x, float y, float sizeX, float sizeY) {
+        this->posX = x;
+        this->posY = y;
+        this->sizeX = sizeX;
+        this->sizeY = sizeY;
+    }
+
+    void setSize2D(glm::vec2 center, glm::vec2 scale) {
+        this->posX = center.x;
+        this->posY = center.y;
+        this->sizeX = scale.x;
+        this->sizeY = scale.y;
+    }
+
+    void setSize3D(float x, float y, float sizeX, float sizeY) {
+        this->posX = x;
+        this->posY = y;
+        this->sizeX = sizeX;
+        this->sizeY = sizeY;
+    }
+
+    void setSize3D(glm::vec2 center, glm::vec2 scale) {
+        this->posX = center.x;
+        this->posY = center.y;
+        this->sizeX = scale.x;
+        this->sizeY = scale.y;
+    }
+
+    bool isCollision2D() {
+        bool x, y;
+
+        for (ColliderBox* target : colliderBoxList) {
+            x = (posX + sizeX >= target->posX && target->posX + target->sizeX >= posX);
+            y = (posY + sizeY >= target->posY && target->posY + target->sizeY >= posY);
+
+            if (x && y)
+                return true;
+        }
+
+        return false;
+    } 
+
+    bool isCollision2D(ColliderBox target) {
+        bool x, y;
+
+        x = (posX + sizeX >= target.posX && target.posX + target.sizeX >= posX);
+        y = (posY + sizeY >= target.posY && target.posY + target.sizeY >= posY);
+
+        return x && y;
+    }
+};
+
 std::vector<GameObject*> gameObjectList;
 std::vector<UI*> UIList;
 std::vector<Camera*> cameraObejctList;
 std::vector<Light*> lightObjectList;
+std::vector<ColliderBox*> colliderBoxList;
 
 class routine {
 public:

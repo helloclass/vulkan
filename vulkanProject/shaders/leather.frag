@@ -25,7 +25,7 @@ void main() {
     Material material;
     // 주변광
     float N = abs(dot(cameraPosition, normalVector));
-    material.ambient = (N > 0.00003f) ? vec3 ( 0.3f ) :vec3 ( N * 1000.0f + 0.6f );
+    material.ambient = (N > 0.00004f) ? vec3 ( 0.3f ) :vec3 ( N * 1000.0f + 0.6f );
 
     // 산광
     material.diffuse    = vec3 ( 0.0f, 0.0f, 0.4f );

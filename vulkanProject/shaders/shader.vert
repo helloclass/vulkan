@@ -45,7 +45,8 @@ void main() {
     fragTexCoord = inTexCoord;
     normalVector = inNormal;
     lightPosition = targetVec.LightPos;
-    cameraPosition = targetVec.CamPos * mat3( ubo.pitch * ubo.yaw * ubo.roll ) * mat3(ubo.view);
+    // cameraPosition = targetVec.CamPos * mat3( ubo.pitch * ubo.yaw * ubo.roll ) * mat3(ubo.view);
+    cameraPosition = targetVec.CamPos;
     halfPosition = inPosition;
     modelMatrix = mat3(ubo.model);
 }

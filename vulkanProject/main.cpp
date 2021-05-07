@@ -6,7 +6,12 @@ using namespace std;
 Camera* mainCam;
 Light* mainLight;
 
-GameObject* charactor[4];
+GameObject* charactor;
+
+Transpose transpose;
+
+GameObject* skybox;
+GameObject* bottom;
 
 GameObject* lightPos;
 
@@ -16,50 +21,84 @@ std::string getAbsolutePath();
 
 class standardRoutine : public routine {
 public:
-    float inv = -1.0f;
-
     void Awake() override{
         routine::Awake();
 
         std::string pwd = getAbsolutePath();
 
-        mainCam = createCamera(glm::vec3(2.0f, 1.0f, 5.0f));
+        mainCam = createCamera(glm::vec3(0.0f, -2.0f, 20.0f));
         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
 
         glm::vec3 charRot = glm::vec3(0, 180, 0);
 
         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
-        charactor[0] = createObject("robot", "models/charactor/body.obj", "textures/charactor/body.png", glm::vec3(0.0f, 0.0f, 0.0f), charRot);
-        charactor[1] = createObject("robot", "models/charactor/bow.obj", "textures/charactor/bow.png", glm::vec3(0.0f, 0.0f, 0.0f), charRot);
-        charactor[2] = createObject("robot", "models/charactor/clothes.obj", "textures/charactor/clothes.png", glm::vec3(0.0f, 0.0f, 0.0f), charRot);
-        charactor[3] = createObject("robot", "models/charactor/hair.obj", "textures/charactor/hair.png", glm::vec3(0.0f, 0.0f, 0.0f), charRot);
+        charactor = createObject(   "robot", 
+                                    "models/charactor/body.obj", 
+                                    "textures/charactor/body.png", 
+                                    glm::vec3(0.0f, 1.0f, 0.0f), 
+                                    charRot, 
+                                    glm::vec3(1.0f), 
+                                    std::string("spv/GameObject/soft.spv")
+                                );
 
-        charactor[0]->_initParam.fragPath = "spv/GameObject/soft.spv";
-        charactor[1]->_initParam.fragPath = "spv/GameObject/glass.spv";
-        charactor[2]->_initParam.fragPath = "spv/GameObject/leather.spv";
+        charactor->appendModel(     "models/charactor/bow.obj", 
+                                    "textures/charactor/bow.png", 
+                                    "spv/GameObject/glass.spv"
+                            );
+        charactor->appendModel(     "models/charactor/clothes.obj", 
+                                    "textures/charactor/clothes.png", 
+                                    "spv/GameObject/leather.spv"
+                            );
+        charactor->appendModel(     "models/charactor/hair.obj", 
+                                    "textures/charactor/hair.png", 
+                                    "spv/GameObject/clothes.spv"
+                            );
 
+        charactor->setCollider(glm::vec3(1.0f));
 
-        lightPos = createObject("lightPos", "models/Light.obj", "textures/Light.png", mainLight->getPosition(), glm::vec3(0.0f), glm::vec3(0.1f));
-        lightPos->_initParam.fragPath = "spv/GameObject/glass.spv";
+        lightPos = createObject("lightPos", "models/Light.obj", "textures/Light.png", mainLight->getPosition(), glm::vec3(0.0f), glm::vec3(0.1f), "spv/GameObject/glass.spv");
 
-        button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 100.0f, 100.0f));
+        skybox = createObject("skybox", "models/skybox/Cube.obj", "textures/skybox/Cube.png",  glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(100.0f), "spv/GameObject/base.spv");
+        skybox->models[0]->_initParam.cullMode = VK_CULL_MODE_NONE;
+
+        // Collision Test
+        bottom = createObject("Bottom", "models/bottom.obj", "textures/bottom.jpg", glm::vec3(0.0f, -3.0f, 0.0f));
+        bottom->setCollider(glm::vec3(10.0f, 1.5f, 10.0f));
+
+        button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 50.0f, 50.0f));
     }
 
     void Start() override{
         routine::Start();
 
-        for (int j = 0; j < 4 ; j++)
-            charactor[j]->initObject();
+        charactor->initObject();
 
         lightPos->initObject();
+        skybox->initObject();
 
+        bottom->initObject();
         button->initObject();
+
     }
 
-    void Update() override{
+    void Update() override {
         routine::Update(); 
         
         lightPos->setPosition(mainLight->getPosition());
+
+        // interactive with bottom
+        if (charactor->isCollider(bottom)) {
+            cout << charactor->isCollider(bottom) << endl;
+
+            transpose.velo = glm::vec3(0.0f);
+            transpose.accel = glm::vec3(0.0f);
+        }
+        else {
+            // Gravity
+            transpose.velo = glm::vec3(0, -0.001f, 0);
+        }
+
+        charactor->Move(transpose.velBySec(_TIME));
 
         if (input::getKey(GLFW_KEY_UP)) {
             mainLight->move(glm::vec3(0.0f, 0.0f, -1.0f));

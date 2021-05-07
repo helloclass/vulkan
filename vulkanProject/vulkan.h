@@ -413,6 +413,63 @@ void getImageData(VkImage& src, VkDeviceSize& imageSize, VkCommandBuffer& comman
     vkDestroyBuffer(device, stagingBuffer, nullptr);
 }
 
+class ColliderBox {
+public: 
+    float posX, posY, posZ;
+    float sizeX, sizeY, sizeZ;
+
+    void setSize2D(float x, float y, float sizeX, float sizeY) {
+        this->posX = x;
+        this->posY = y;
+        this->sizeX = sizeX;
+        this->sizeY = sizeY;
+    }
+
+    void setSize2D(glm::vec2 center, glm::vec2 scale) {
+        this->posX = center.x;
+        this->posY = center.y;
+        this->sizeX = scale.x;
+        this->sizeY = scale.y;
+    }
+
+    void setSize3D(float x, float y, float z, float sizeX, float sizeY, float sizeZ) {
+        this->posX = x;
+        this->posY = y;
+        this->posZ = z;
+        this->sizeX = sizeX;
+        this->sizeY = sizeY;
+        this->sizeZ = sizeZ;
+    }
+
+    void setSize3D(glm::vec3 center, glm::vec3 scale) {
+        this->posX = center.x;
+        this->posY = center.y;
+        this->posZ = center.z;
+        this->sizeX = scale.x;
+        this->sizeY = scale.y;
+        this->sizeZ = scale.z;
+    }
+
+    bool isCollision2D(ColliderBox* target) {
+        bool x, y;
+
+        x = !((posX + sizeX) < (target->posX - target->sizeX) || (posX - sizeX) > (target->posX + target->sizeX));
+        y = !((posY + sizeY) < (target->posY - target->sizeY) || (posX - sizeY) > (target->posY + target->sizeY));
+
+        return x && y;
+    }
+
+    bool isCollision3D(ColliderBox* target) {
+        bool x, y, z;
+
+        x = !((posX + sizeX) < (target->posX - target->sizeX) || (posX - sizeX) > (target->posX + target->sizeX));
+        y = !((posY + sizeY) < (target->posY - target->sizeY) || (posX - sizeY) > (target->posY + target->sizeY));
+        z = !((posZ + sizeZ) < (target->posZ - target->sizeZ) || (posZ - sizeZ) > (target->posZ + target->sizeZ));
+
+        return (x && y) && z;
+    }
+};
+
 // 그래픽스파이프라인 초기 속성 (per GameObject)
 struct initParam {
 public:
@@ -427,8 +484,7 @@ public:
     VkCullModeFlagBits cullMode;
 }; // _initParam
 
-
-class GameObject {
+class Models {
 public:
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
@@ -463,10 +519,7 @@ public:
     VkPipeline computesPipeline;
     VkPipeline graphicsPipeline;
 
-    //////////////////////
-    uint32_t Index;
-
-    std::string Name;
+    /////////////////////////////////
 
     std::string objectPath;
     std::string texturePath;
@@ -476,6 +529,63 @@ public:
     glm::vec3 Scale;
 
     struct initParam _initParam;
+
+    Models(std::string objPath, std::string textPath, std::string fragPath = "spv/GameObject/base.spv") {
+        this->objectPath = objPath;
+        this->texturePath = textPath;
+        this->_initParam.fragPath = fragPath;
+
+        Position = glm::vec3(0.0f);
+        Rotate = glm::vec3(0.0f);
+        Scale = glm::vec3(0.0f);
+
+        this->_initParam.vertPath = "spv/GameObject/vert.spv";
+        this->_initParam.fragPath = fragPath;
+
+        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
+        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+    }
+};
+
+class Transpose {
+public:
+    glm::vec3 velo;
+    glm::vec3 accel;
+
+    void setVelocity(glm::vec3 vel) {
+        this->velo = vel;
+    }
+    void setAccel(glm::vec3 accel) {
+        this->accel = accel;
+    }
+
+    glm::vec3 getVelocity() {
+        return this->velo;
+    }
+    glm::vec3 getAccel() {
+        return this->accel;
+    }
+
+    glm::vec3 velBySec(float nanoSec) {
+        velo += accel * nanoSec;
+        return velo * nanoSec;
+    }
+};
+
+class GameObject {
+public:
+    std::vector<Models*> models;
+
+    uint32_t Index;
+
+    std::string Name;
+
+    glm::vec3 Position;
+    glm::vec3 Rotate;
+    glm::vec3 Scale;
+
+    ColliderBox* collider;
 
     void createDescriptorSetLayout();
     void createComputePipeline();
@@ -494,53 +604,65 @@ public:
 public:
     GameObject(std::string Name, std::string objectPath, std::string texturePath) {
         this->Name = Name; 
-        this->objectPath = objectPath;
-        this->texturePath = texturePath;
+
+        models.push_back(new Models(objectPath, texturePath));
 
         this->Position = glm::vec3(0.0f);
         this->Rotate = glm::vec3(0.0f);
         this->Scale = glm::vec3(1.0f);
 
-        this->_initParam.vertPath = "spv/GameObject/vert.spv";
-        this->_initParam.fragPath = "spv/GameObject/clothes.spv";
-
-        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
-        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+        this->collider = NULL;
     }
 
     GameObject(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 Position, glm::vec3 Rotate, glm::vec3 Scale) {
         this->Name = Name; 
-        this->objectPath = objectPath;
-        this->texturePath = texturePath;
+
+        models.push_back(new Models(objectPath, texturePath));
 
         this->Position = Position;
         this->Rotate = Rotate;
         this->Scale = Scale;
 
-        this->_initParam.vertPath = "spv/GameObject/vert.spv";
-        this->_initParam.fragPath = "spv/GameObject/clothes.spv";
-
-        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
-        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+        this->collider = NULL;
     }
 
+    // getter setter
     void setIndex(uint32_t idx)             { this->Index = idx; }
     void setName(std::string name)          { this->Name = name; }
-    void setObjectPath(std::string path)    { this->objectPath = path; }
-    void setTexturePath(std::string path)   { this->texturePath = path; }
     void setPosition(glm::vec3 pos)         { this->Position = pos; }
     void setRotate(glm::vec3 rot)           { this->Rotate = rot; }
     void setScale(glm::vec3 scale)          { this->Scale = scale; }
 
     uint32_t getIndex()                     { return Index; }
     std::string getName()                   { return Name; }
-    std::string getObjectPath()             { return objectPath; }
-    std::string getTexturePath()            { return texturePath; }
     glm::vec3 getPosition()                 { return Position; }
     glm::vec3 getRotate()                   { return Rotate; }
     glm::vec3 getScale()                    { return Scale; }
+
+    // Transpose
+    void Move(glm::vec3 vel)                {   this->Position += vel; 
+                                                this->collider->posX = this->Position.x;
+                                                this->collider->posY = this->Position.y;
+                                                this->collider->posZ = this->Position.z;
+                                            }
+
+    // append subModel 
+    void appendModel(std::string objectPath, std::string texturePath, std::string fragPath = "spv/GameObject/base.spv") {
+        models.push_back(new Models(objectPath, texturePath, fragPath));
+    }
+
+    void setCollider(glm::vec3 scale) {
+        this->collider = new ColliderBox();
+
+        this->collider->setSize3D(this->Position, scale);
+    }
+
+    bool isCollider(GameObject* go) {
+        if (!go->collider)
+            return false;
+
+        return this->collider->isCollision3D(go->collider);
+    }
 
     void initObject() {
         createDescriptorSetLayout();
@@ -555,66 +677,69 @@ public:
         createTexelUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
-        // allocateTexelUniformBuffer();
     }
 
     void refresh() {
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        for (Models* m : models) {
+            vkDestroyPipeline(device, m->graphicsPipeline, nullptr);
+            vkDestroyPipelineLayout(device, m->pipelineLayout, nullptr);
 
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            for (size_t i = 0; i < swapChainImages.size(); i++) {
+                vkDestroyBuffer(device, m->uniformBuffers[i], nullptr);
+                vkFreeMemory(device, m->uniformBuffersMemory[i], nullptr);
+            }
+
+            vkDestroyBuffer(device, m->texelUniformBuffer, nullptr);
+            vkFreeMemory(device, m->texelUniformBuffersMemory, nullptr);
+            vkDestroyBufferView(device, m->texelUniformBuffersView, nullptr);
+
+            vkDestroyDescriptorPool(device, m->descriptorPool, nullptr);
+
+            createGraphicsPipeline();
+            createUniformBuffers();
+            createTexelUniformBuffers();
+            createDescriptorPool();
+            createDescriptorSets();
         }
-
-        vkDestroyBuffer(device, texelUniformBuffer, nullptr);
-        vkFreeMemory(device, texelUniformBuffersMemory, nullptr);
-        vkDestroyBufferView(device, texelUniformBuffersView, nullptr);
-
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-        createGraphicsPipeline();
-        createUniformBuffers();
-        createTexelUniformBuffers();
-        createDescriptorPool();
-        createDescriptorSets();
     }
 
     void destroy() {
-        vkDestroyPipeline(device, computesPipeline, nullptr);
-        vkDestroyPipeline(device, graphicsPipeline, nullptr);
-        vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
-        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        for (Models* m : models) {
+            vkDestroyPipeline(device, m->computesPipeline, nullptr);
+            vkDestroyPipeline(device, m->graphicsPipeline, nullptr);
+            vkDestroyPipelineLayout(device, m->computePipelineLayout, nullptr);
+            vkDestroyPipelineLayout(device, m->pipelineLayout, nullptr);
 
-        for (size_t i = 0; i < swapChainImages.size(); i++) {
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            for (size_t i = 0; i < swapChainImages.size(); i++) {
+                vkDestroyBuffer(device, m->uniformBuffers[i], nullptr);
+                vkFreeMemory(device, m->uniformBuffersMemory[i], nullptr);
+            }
+
+            // vkUnmapMemory(device, texelUniformBuffersMemory);
+            
+            vkDestroyBuffer(device, m->texelUniformBuffer, nullptr);
+            vkFreeMemory(device, m->texelUniformBuffersMemory, nullptr);
+            vkDestroyBufferView(device, m->texelUniformBuffersView, nullptr);
+
+            vkDestroyBuffer(device, m->texelVertexBuffer, nullptr);
+            vkFreeMemory(device, m->texelVertexBuffersMemory, nullptr);
+            vkDestroyBufferView(device, m->texelVertexBuffersView, nullptr);
+
+            vkDestroyDescriptorPool(device, m->descriptorPool, nullptr);
+
+            vkDestroyImageView(device, m->textureImageView, nullptr);
+
+            vkDestroyImage(device, m->textureImage, nullptr);
+            vkFreeMemory(device, m->textureImageMemory, nullptr);
+
+            vkDestroyDescriptorSetLayout(device, m->descriptorSetLayout, nullptr);
+
+            vkDestroyBuffer(device, m->indexBuffer, nullptr);
+            vkFreeMemory(device, m->indexBufferMemory, nullptr);
+
+            vkDestroyBuffer(device, m->vertexBuffer, nullptr);
+            vkFreeMemory(device, m->vertexBufferMemory, nullptr);
         }
-
-        // vkUnmapMemory(device, texelUniformBuffersMemory);
-        
-        vkDestroyBuffer(device, texelUniformBuffer, nullptr);
-        vkFreeMemory(device, texelUniformBuffersMemory, nullptr);
-        vkDestroyBufferView(device, texelUniformBuffersView, nullptr);
-
-        vkDestroyBuffer(device, texelVertexBuffer, nullptr);
-        vkFreeMemory(device, texelVertexBuffersMemory, nullptr);
-        vkDestroyBufferView(device, texelVertexBuffersView, nullptr);
-
-        vkDestroyDescriptorPool(device, descriptorPool, nullptr);
-
-        vkDestroyImageView(device, textureImageView, nullptr);
-
-        vkDestroyImage(device, textureImage, nullptr);
-        vkFreeMemory(device, textureImageMemory, nullptr);
-
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
-
-        vkDestroyBuffer(device, indexBuffer, nullptr);
-        vkFreeMemory(device, indexBufferMemory, nullptr);
-
-        vkDestroyBuffer(device, vertexBuffer, nullptr);
-        vkFreeMemory(device, vertexBufferMemory, nullptr);
     }
 };
 
@@ -923,68 +1048,10 @@ public:
     };
 };
 
-class ColliderBox {
-public: 
-    float posX, posY, posZ;
-    float sizeX, sizeY, sizeZ;
-
-    void setSize2D(float x, float y, float sizeX, float sizeY) {
-        this->posX = x;
-        this->posY = y;
-        this->sizeX = sizeX;
-        this->sizeY = sizeY;
-    }
-
-    void setSize2D(glm::vec2 center, glm::vec2 scale) {
-        this->posX = center.x;
-        this->posY = center.y;
-        this->sizeX = scale.x;
-        this->sizeY = scale.y;
-    }
-
-    void setSize3D(float x, float y, float sizeX, float sizeY) {
-        this->posX = x;
-        this->posY = y;
-        this->sizeX = sizeX;
-        this->sizeY = sizeY;
-    }
-
-    void setSize3D(glm::vec2 center, glm::vec2 scale) {
-        this->posX = center.x;
-        this->posY = center.y;
-        this->sizeX = scale.x;
-        this->sizeY = scale.y;
-    }
-
-    bool isCollision2D() {
-        bool x, y;
-
-        for (ColliderBox* target : colliderBoxList) {
-            x = (posX + sizeX >= target->posX && target->posX + target->sizeX >= posX);
-            y = (posY + sizeY >= target->posY && target->posY + target->sizeY >= posY);
-
-            if (x && y)
-                return true;
-        }
-
-        return false;
-    } 
-
-    bool isCollision2D(ColliderBox target) {
-        bool x, y;
-
-        x = (posX + sizeX >= target.posX && target.posX + target.sizeX >= posX);
-        y = (posY + sizeY >= target.posY && target.posY + target.sizeY >= posY);
-
-        return x && y;
-    }
-};
-
 std::vector<GameObject*> gameObjectList;
 std::vector<UI*> UIList;
 std::vector<Camera*> cameraObejctList;
 std::vector<Light*> lightObjectList;
-std::vector<ColliderBox*> colliderBoxList;
 
 class routine {
 public:

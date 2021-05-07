@@ -20,9 +20,7 @@ struct Material {
 }; 
 
 void main() {
-    vec3 campos = lightPosition;
-
-    outColor = vec4(min(dot(normalVector, campos) * 50.0f, 0.5f));
+    outColor = min(vec4(dot(normalVector, lightPosition)) * 100.0f , 0.2f);
 
     vec3 lightColor = vec3(1.0f);
 

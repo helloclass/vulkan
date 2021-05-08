@@ -38,7 +38,7 @@ float ComputeConstantLayouts[][4] = {
 float GraphicsConstantLayouts[][4] = {
     { 0.0f, 0.0f, 0.0f, 0.0f },     // CamPos
     { 0.0f, 0.0f, 0.0f, 0.0f },     // LightPos
-    { 0.58f, 0.58f, 0.58f, 0.0f }    // Normal
+    { 0.58f, 0.58f, 0.58f, 0.0f },  // Normal
 };
 
 glm::vec3 lightVec = glm::vec3(0.0f);
@@ -416,11 +416,14 @@ void getImageData(VkImage& src, VkDeviceSize& imageSize, VkCommandBuffer& comman
 class ColliderBox {
 public: 
     float posX, posY, posZ;
+    float localPosX, localPosY, localPosZ;
     float sizeX, sizeY, sizeZ;
 
-    void setSize2D(float x, float y, float sizeX, float sizeY) {
+    void setSize2D(float x, float y, float localX, float localY, float sizeX, float sizeY) {
         this->posX = x;
         this->posY = y;
+        this->localPosX = localX;
+        this->localPosY = localY;
         this->sizeX = sizeX;
         this->sizeY = sizeY;
     }
@@ -428,23 +431,33 @@ public:
     void setSize2D(glm::vec2 center, glm::vec2 scale) {
         this->posX = center.x;
         this->posY = center.y;
+        this->localPosX = 0.0f;
+        this->localPosY = 0.0f;
         this->sizeX = scale.x;
         this->sizeY = scale.y;
     }
 
-    void setSize3D(float x, float y, float z, float sizeX, float sizeY, float sizeZ) {
+    void setSize3D( float x, float y, float z,
+                    float localX, float localY, float localZ,
+                    float sizeX, float sizeY, float sizeZ) {
         this->posX = x;
         this->posY = y;
         this->posZ = z;
+        this->localPosX = localX;
+        this->localPosY = localY;
+        this->localPosZ = localZ;
         this->sizeX = sizeX;
         this->sizeY = sizeY;
         this->sizeZ = sizeZ;
     }
 
-    void setSize3D(glm::vec3 center, glm::vec3 scale) {
+    void setSize3D(glm::vec3 center, glm::vec3 local, glm::vec3 scale) {
         this->posX = center.x;
         this->posY = center.y;
         this->posZ = center.z;
+        this->localPosX = local.x;
+        this->localPosY = local.y;
+        this->localPosZ = local.z;
         this->sizeX = scale.x;
         this->sizeY = scale.y;
         this->sizeZ = scale.z;
@@ -461,10 +474,18 @@ public:
 
     bool isCollision3D(ColliderBox* target) {
         bool x, y, z;
+        float px, py, pz, tx, ty, tz;
 
-        x = !((posX + sizeX) < (target->posX - target->sizeX) || (posX - sizeX) > (target->posX + target->sizeX));
-        y = !((posY + sizeY) < (target->posY - target->sizeY) || (posX - sizeY) > (target->posY + target->sizeY));
-        z = !((posZ + sizeZ) < (target->posZ - target->sizeZ) || (posZ - sizeZ) > (target->posZ + target->sizeZ));
+        px = posX + localPosX;
+        py = posY + localPosY;
+        pz = posZ + localPosZ;
+        tx = target->posX + target->localPosX; 
+        ty = target->posY + target->localPosY; 
+        tz = target->posZ + target->localPosZ; 
+
+        x = !((px + sizeX) < (tx - target->sizeX) || (px - sizeX) > (tx + target->sizeX));
+        y = !((py + sizeY) < (ty - target->sizeY) || (py - sizeY) > (ty + target->sizeY));
+        z = !((pz + sizeZ) < (tz - target->sizeZ) || (pz - sizeZ) > (tz + target->sizeZ));
 
         return (x && y) && z;
     }
@@ -513,13 +534,10 @@ public:
     VkDescriptorPool descriptorPool;
     std::vector<VkDescriptorSet> descriptorSets;
 
-    VkDescriptorSetLayout descriptorSetLayout;
-    VkPipelineLayout computePipelineLayout;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline computesPipeline;
     VkPipeline graphicsPipeline;
 
     /////////////////////////////////
+    std::string Name;
 
     std::string objectPath;
     std::string texturePath;
@@ -530,17 +548,54 @@ public:
 
     struct initParam _initParam;
 
-    Models(std::string objPath, std::string textPath, std::string fragPath = "spv/GameObject/base.spv") {
+    Models(std::string name, std::string objPath, std::string textPath, std::string fragPath = "spv/GameObject/base.spv") {
+        this->Name = name;
+        
         this->objectPath = objPath;
         this->texturePath = textPath;
-        this->_initParam.fragPath = fragPath;
 
         Position = glm::vec3(0.0f);
         Rotate = glm::vec3(0.0f);
-        Scale = glm::vec3(0.0f);
+        Scale = glm::vec3(1.0f);
 
         this->_initParam.vertPath = "spv/GameObject/vert.spv";
         this->_initParam.fragPath = fragPath;
+
+        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
+        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+    }
+
+    Models(std::string name, std::string objPath, std::string textPath, glm::vec3 pos, glm::vec3 scale) {
+        this->Name = name;
+
+        this->objectPath = objPath;
+        this->texturePath = textPath;
+
+        this->Position = pos;
+        this->Rotate = glm::vec3(0.0f);
+        this->Scale = scale;
+
+        this->_initParam.vertPath = "spv/GameObject/vert.spv";
+        this->_initParam.fragPath = "spv/GameObject/base.spv";
+
+        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
+        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+    }
+
+    Models(std::string name, std::string objPath, std::string textPath, glm::vec3 scale) {
+        this->Name = name;
+
+        this->objectPath = objPath;
+        this->texturePath = textPath;
+
+        Position = glm::vec3(0.0f);
+        Rotate = glm::vec3(0.0f);
+        this->Scale = scale;
+
+        this->_initParam.vertPath = "spv/GameObject/vert.spv";
+        this->_initParam.fragPath = "spv/GameObject/base.spv";
 
         this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
@@ -575,6 +630,15 @@ public:
 
 class GameObject {
 public:
+    // Union Function
+    VkDescriptorSetLayout descriptorSetLayout;
+
+    VkPipelineLayout computePipelineLayout;
+    VkPipelineLayout pipelineLayout;
+
+    VkPipeline computesPipeline;
+
+    // standard Function
     std::vector<Models*> models;
 
     uint32_t Index;
@@ -605,7 +669,7 @@ public:
     GameObject(std::string Name, std::string objectPath, std::string texturePath) {
         this->Name = Name; 
 
-        models.push_back(new Models(objectPath, texturePath));
+        models.push_back(new Models(Name, objectPath, texturePath));
 
         this->Position = glm::vec3(0.0f);
         this->Rotate = glm::vec3(0.0f);
@@ -617,7 +681,7 @@ public:
     GameObject(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 Position, glm::vec3 Rotate, glm::vec3 Scale) {
         this->Name = Name; 
 
-        models.push_back(new Models(objectPath, texturePath));
+        models.push_back(new Models(Name, objectPath, texturePath));
 
         this->Position = Position;
         this->Rotate = Rotate;
@@ -640,21 +704,31 @@ public:
     glm::vec3 getScale()                    { return Scale; }
 
     // Transpose
-    void Move(glm::vec3 vel)                {   this->Position += vel; 
+    void Move(glm::vec3 vel)                { 
+                                                this->Position += vel;
                                                 this->collider->posX = this->Position.x;
                                                 this->collider->posY = this->Position.y;
                                                 this->collider->posZ = this->Position.z;
                                             }
 
     // append subModel 
-    void appendModel(std::string objectPath, std::string texturePath, std::string fragPath = "spv/GameObject/base.spv") {
-        models.push_back(new Models(objectPath, texturePath, fragPath));
+    void appendModel(std::string Name, std::string objectPath, std::string texturePath, std::string fragPath = "spv/GameObject/base.spv") {
+        models.push_back(new Models(Name, objectPath, texturePath, fragPath));
+    }
+
+    void appendModel(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 pos, glm::vec3 scale) {
+        models.push_back(new Models(Name, objectPath, texturePath, pos, scale));
     }
 
     void setCollider(glm::vec3 scale) {
         this->collider = new ColliderBox();
 
-        this->collider->setSize3D(this->Position, scale);
+        this->collider->setSize3D(this->Position, glm::vec3(0.0f), scale);
+    }
+
+    void setCollider(glm::vec3 localPos, glm::vec3 scale) {
+        this->collider = new ColliderBox();
+        this->collider->setSize3D(this->Position, localPos, scale);
     }
 
     bool isCollider(GameObject* go) {
@@ -663,6 +737,23 @@ public:
 
         return this->collider->isCollision3D(go->collider);
     }
+
+    void drawCollider() {
+        this->appendModel(  "collider",
+                            "models/Effect/collider.obj", 
+                            "textures/effect/collider.png", 
+                            glm::vec3(this->collider->localPosX , this->collider->localPosY, this->collider->localPosZ),
+                            glm::vec3(this->collider->sizeX, this->collider->sizeY, this->collider->sizeZ));
+    }
+
+    // find Child
+    Models* find(std::string name) {
+        for (Models* m : models) {
+            if (m->Name == name)
+                return m;
+        }
+        return NULL;
+    } 
 
     void initObject() {
         createDescriptorSetLayout();
@@ -680,9 +771,10 @@ public:
     }
 
     void refresh() {
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
         for (Models* m : models) {
             vkDestroyPipeline(device, m->graphicsPipeline, nullptr);
-            vkDestroyPipelineLayout(device, m->pipelineLayout, nullptr);
 
             for (size_t i = 0; i < swapChainImages.size(); i++) {
                 vkDestroyBuffer(device, m->uniformBuffers[i], nullptr);
@@ -704,18 +796,19 @@ public:
     }
 
     void destroy() {
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+        vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
+
+        vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+        vkDestroyPipeline(device, computesPipeline, nullptr);
+
         for (Models* m : models) {
-            vkDestroyPipeline(device, m->computesPipeline, nullptr);
             vkDestroyPipeline(device, m->graphicsPipeline, nullptr);
-            vkDestroyPipelineLayout(device, m->computePipelineLayout, nullptr);
-            vkDestroyPipelineLayout(device, m->pipelineLayout, nullptr);
 
             for (size_t i = 0; i < swapChainImages.size(); i++) {
                 vkDestroyBuffer(device, m->uniformBuffers[i], nullptr);
                 vkFreeMemory(device, m->uniformBuffersMemory[i], nullptr);
             }
-
-            // vkUnmapMemory(device, texelUniformBuffersMemory);
             
             vkDestroyBuffer(device, m->texelUniformBuffer, nullptr);
             vkFreeMemory(device, m->texelUniformBuffersMemory, nullptr);
@@ -731,8 +824,6 @@ public:
 
             vkDestroyImage(device, m->textureImage, nullptr);
             vkFreeMemory(device, m->textureImageMemory, nullptr);
-
-            vkDestroyDescriptorSetLayout(device, m->descriptorSetLayout, nullptr);
 
             vkDestroyBuffer(device, m->indexBuffer, nullptr);
             vkFreeMemory(device, m->indexBufferMemory, nullptr);
@@ -1057,8 +1148,9 @@ class routine {
 public:
     std::chrono::_V2::system_clock::time_point startTime;
     std::chrono::_V2::system_clock::time_point currentTime;
+    std::chrono::_V2::system_clock::time_point previousTime;
     // Time Per Routine
-    float _TIME;
+    float _TIME, _TIME_PER_UPDATE;
 
     virtual void Awake() {
         TexelBufferObject.push_back(1.0f);
@@ -1073,11 +1165,16 @@ public:
 
     virtual void Start() {
         startTime = std::chrono::high_resolution_clock::now();
+        previousTime = startTime;
     }
 
     virtual void Update() {
         currentTime = std::chrono::high_resolution_clock::now();
+
         _TIME = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+        _TIME_PER_UPDATE = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - previousTime).count();
+
+        previousTime = currentTime;
     }
 
     virtual void PhysicalUpdate() {

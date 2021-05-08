@@ -17,6 +17,14 @@ GameObject* lightPos;
 
 UI* button;
 
+// camera
+float camSpeed = 5000.0f;
+float camQuart = 100.0f;
+
+float yOfCam = 0.0f;
+glm::vec3 frontOfCam(0.0f);
+glm::vec3 rightOfCam(0.0f);
+
 std::string getAbsolutePath();
 
 class standardRoutine : public routine {
@@ -26,45 +34,68 @@ public:
 
         std::string pwd = getAbsolutePath();
 
-        mainCam = createCamera(glm::vec3(0.0f, -2.0f, 20.0f));
+        mainCam = createCamera(glm::vec3(0.0f, 4.0f, 20.0f));
         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
 
         glm::vec3 charRot = glm::vec3(0, 180, 0);
 
         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
-        charactor = createObject(   "robot", 
+        charactor = createObject(   "body", 
                                     "models/charactor/body.obj", 
                                     "textures/charactor/body.png", 
-                                    glm::vec3(0.0f, 1.0f, 0.0f), 
+                                    glm::vec3(0.0f, 10.0f, 0.0f), 
                                     charRot, 
                                     glm::vec3(1.0f), 
                                     std::string("spv/GameObject/soft.spv")
                                 );
 
-        charactor->appendModel(     "models/charactor/bow.obj", 
+        charactor->appendModel(     "bow",
+                                    "models/charactor/bow.obj", 
                                     "textures/charactor/bow.png", 
                                     "spv/GameObject/glass.spv"
                             );
-        charactor->appendModel(     "models/charactor/clothes.obj", 
+        charactor->appendModel(     "clothes",
+                                    "models/charactor/clothes.obj", 
                                     "textures/charactor/clothes.png", 
                                     "spv/GameObject/leather.spv"
                             );
-        charactor->appendModel(     "models/charactor/hair.obj", 
+        charactor->appendModel(     "hair",
+                                    "models/charactor/hair.obj", 
                                     "textures/charactor/hair.png", 
                                     "spv/GameObject/clothes.spv"
                             );
 
-        charactor->setCollider(glm::vec3(1.0f));
+        charactor->setCollider(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.5f, 1.0f, 0.5f));
+        charactor->drawCollider();
 
-        lightPos = createObject("lightPos", "models/Light.obj", "textures/Light.png", mainLight->getPosition(), glm::vec3(0.0f), glm::vec3(0.1f), "spv/GameObject/glass.spv");
+        lightPos = createObject(    "lightPos",
+                                    "models/Light.obj", 
+                                    "textures/Light.png", 
+                                    mainLight->getPosition(), 
+                                    glm::vec3(0.0f), 
+                                    glm::vec3(0.1f), 
+                                    "spv/GameObject/glass.spv");
 
-        skybox = createObject("skybox", "models/skybox/Cube.obj", "textures/skybox/Cube.png",  glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(100.0f), "spv/GameObject/base.spv");
+        skybox = createObject(      "skybox", 
+                                    "models/skybox/Cube.obj", 
+                                    "textures/skybox/Cube.png",  
+                                    glm::vec3(0.0f), 
+                                    glm::vec3(0.0f), 
+                                    glm::vec3(100.0f), 
+                                    "spv/GameObject/base.spv");
+                                    
         skybox->models[0]->_initParam.cullMode = VK_CULL_MODE_NONE;
 
         // Collision Test
-        bottom = createObject("Bottom", "models/bottom.obj", "textures/bottom.jpg", glm::vec3(0.0f, -3.0f, 0.0f));
-        bottom->setCollider(glm::vec3(10.0f, 1.5f, 10.0f));
+        bottom = createObject(  "Bottom", 
+                                "models/bottom.obj", 
+                                "textures/bottom.jpg", 
+                                glm::vec3(0.0f, 0.0f, 0.0f));
 
+        bottom->setCollider(glm::vec3(10.0f, 0.5f, 10.0f));
+        bottom->drawCollider();
+
+        // UI
         button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 50.0f, 50.0f));
     }
 
@@ -78,28 +109,61 @@ public:
 
         bottom->initObject();
         button->initObject();
-
     }
 
     void Update() override {
         routine::Update(); 
         
+        // Light Dot Object
         lightPos->setPosition(mainLight->getPosition());
 
         // interactive with bottom
         if (charactor->isCollider(bottom)) {
-            cout << charactor->isCollider(bottom) << endl;
-
-            transpose.velo = glm::vec3(0.0f);
+            transpose.velo = glm::vec3(0.0f, 5.0f, 0.0f);
             transpose.accel = glm::vec3(0.0f);
         }
         else {
             // Gravity
-            transpose.velo = glm::vec3(0, -0.001f, 0);
+            transpose.accel = glm::vec3(0, -2.0f, 0);
         }
 
-        charactor->Move(transpose.velBySec(_TIME));
+        charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
 
+        // 관측자 이동
+        yOfCam = glm::radians(mainCam->getRotate().y);
+
+        frontOfCam = glm::vec3(sin(-yOfCam), 0.0f, cos(-yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+        rightOfCam = glm::vec3(cos(yOfCam), 0.0f, sin(yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+
+        if (!input::getKey(GLFW_KEY_LEFT_ALT)) {
+            if (input::getKey(GLFW_KEY_W))
+                mainCam->moveZ(-frontOfCam);
+            else if (input::getKey(GLFW_KEY_S))
+                mainCam->moveZ(frontOfCam);
+
+            if (input::getKey(GLFW_KEY_A))
+                mainCam->moveX(-rightOfCam);
+            else if (input::getKey(GLFW_KEY_D))
+                mainCam->moveX(rightOfCam);
+
+            if (input::getKey(GLFW_KEY_Q))
+                mainCam->moveY(camSpeed * _TIME_PER_UPDATE);
+            else if (input::getKey(GLFW_KEY_E))
+                mainCam->moveY(-camSpeed * _TIME_PER_UPDATE);
+        }
+        else {
+            if (input::getKey(GLFW_KEY_W))
+                mainCam->pitch(-camQuart * _TIME_PER_UPDATE);
+            else if (input::getKey(GLFW_KEY_S))
+                mainCam->pitch(camQuart * _TIME_PER_UPDATE);
+
+            if (input::getKey(GLFW_KEY_A))
+                mainCam->yaw(-camQuart * _TIME_PER_UPDATE);
+            else if (input::getKey(GLFW_KEY_D))
+                mainCam->yaw(camQuart * _TIME_PER_UPDATE);
+        }
+
+        // 빛 오브젝트 이동
         if (input::getKey(GLFW_KEY_UP)) {
             mainLight->move(glm::vec3(0.0f, 0.0f, -1.0f));
         }
@@ -132,9 +196,6 @@ void batchUI();
 uint32_t getUIIdx();
 
 int main() {
-    float camSpeed = 5.0f;
-    float camQuart = 0.2f;
-
     standardRoutine rt;
 
     _UIMAP = new char*[HEIGHT];
@@ -154,51 +215,14 @@ int main() {
         
         rt.Start();
 
-        float y = 0.0f;
-        glm::vec3 front(0.0f);
-        glm::vec3 right(0.0f);
-
         while(!glfwWindowShouldClose(window)) {
             glfwPollEvents();
-
-            y = glm::radians(mainCam->getRotate().y);
-
-            front = glm::vec3(sin(-y), 0.0f, cos(-y)) * camSpeed;
-            right = glm::vec3(cos(y), 0.0f, sin(y)) * camSpeed;
 
             // rt.PhysicalUpdate();
             rt.Update();
             
             if (input::getMouseButtonDown(GLFW_MOUSE_BUTTON_LEFT))
                 getUIIdx();
-
-            if (!input::getKey(GLFW_KEY_LEFT_ALT)) {
-                if (input::getKey(GLFW_KEY_W))
-                    mainCam->moveZ(-front);
-                else if (input::getKey(GLFW_KEY_S))
-                    mainCam->moveZ(front);
-
-                if (input::getKey(GLFW_KEY_A))
-                    mainCam->moveX(-right);
-                else if (input::getKey(GLFW_KEY_D))
-                    mainCam->moveX(right);
-
-                if (input::getKey(GLFW_KEY_Q))
-                    mainCam->moveY(camSpeed);
-                else if (input::getKey(GLFW_KEY_E))
-                    mainCam->moveY(-camSpeed);
-            }
-            else {
-                if (input::getKey(GLFW_KEY_W))
-                    mainCam->pitch(-camQuart);
-                else if (input::getKey(GLFW_KEY_S))
-                    mainCam->pitch(camQuart);
-
-                if (input::getKey(GLFW_KEY_A))
-                    mainCam->yaw(-camQuart);
-                else if (input::getKey(GLFW_KEY_D))
-                    mainCam->yaw(camQuart);
-            }
 
             drawFrame();
         }

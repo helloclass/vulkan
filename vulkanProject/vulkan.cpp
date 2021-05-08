@@ -600,77 +600,117 @@ void GameObject::createDescriptorSetLayout() {
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
-    for (Models* m : models) {
-        if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &m->descriptorSetLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create descriptor set layout!");
-        }
+    if (vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &this->descriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
     }
 }
 
 void GameObject::createComputePipeline() {
-    for (Models* m : models) {
-        std::vector<char> compShaderCode = readFile("spv/Compute/exam.spv");
-        VkShaderModule compShaderModule = createShaderModule(compShaderCode);
+    std::vector<char> compShaderCode = readFile("spv/Compute/exam.spv");
+    VkShaderModule compShaderModule = createShaderModule(compShaderCode);
 
-        VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo{};
-        pipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        pipelineShaderStageCreateInfo.pNext = 0;
-        pipelineShaderStageCreateInfo.flags = 0;
-        pipelineShaderStageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-        pipelineShaderStageCreateInfo.module = compShaderModule;
-        pipelineShaderStageCreateInfo.pName = "main";
-        pipelineShaderStageCreateInfo.pSpecializationInfo = 0;
+    VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo{};
+    pipelineShaderStageCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineShaderStageCreateInfo.pNext = 0;
+    pipelineShaderStageCreateInfo.flags = 0;
+    pipelineShaderStageCreateInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineShaderStageCreateInfo.module = compShaderModule;
+    pipelineShaderStageCreateInfo.pName = "main";
+    pipelineShaderStageCreateInfo.pSpecializationInfo = 0;
 
-        VkPushConstantRange pushConstantRange;
-        pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-        pushConstantRange.offset = 0;
-        pushConstantRange.size = sizeof(ComputeConstantLayouts);
+    VkPushConstantRange pushConstantRange;
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(ComputeConstantLayouts);
 
-        VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-        pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutCreateInfo.pNext = 0;
-        pipelineLayoutCreateInfo.flags = 0;
-        pipelineLayoutCreateInfo.setLayoutCount = 1;
-        pipelineLayoutCreateInfo.pSetLayouts = &m->descriptorSetLayout;
-        pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-        pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
+    pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutCreateInfo.pNext = 0;
+    pipelineLayoutCreateInfo.flags = 0;
+    pipelineLayoutCreateInfo.setLayoutCount = 1;
+    pipelineLayoutCreateInfo.pSetLayouts = &this->descriptorSetLayout;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
 
-        if ( vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &m->computePipelineLayout) != VK_SUCCESS ) {
-            throw std::runtime_error("pipelineLayout 생성 실패");
-        }
-
-        VkComputePipelineCreateInfo computePipelineCreateInfo{};
-        computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        computePipelineCreateInfo.pNext = 0;
-        computePipelineCreateInfo.flags = 0;
-        computePipelineCreateInfo.stage = pipelineShaderStageCreateInfo;
-        computePipelineCreateInfo.layout = m->computePipelineLayout;
-        computePipelineCreateInfo.basePipelineHandle = 0;
-        computePipelineCreateInfo.basePipelineIndex = 0;
-
-        if ( vkCreateComputePipelines(device, 0, 1, &computePipelineCreateInfo, nullptr, &m->computesPipeline) != VK_SUCCESS) {
-            throw std::runtime_error("computePipeline 생성 실패");
-        }
-
-        vkDestroyShaderModule(device, compShaderModule, 0);
+    if ( vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, nullptr, &this->computePipelineLayout) != VK_SUCCESS ) {
+        throw std::runtime_error("pipelineLayout 생성 실패");
     }
+
+    VkComputePipelineCreateInfo computePipelineCreateInfo{};
+    computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    computePipelineCreateInfo.pNext = 0;
+    computePipelineCreateInfo.flags = 0;
+    computePipelineCreateInfo.stage = pipelineShaderStageCreateInfo;
+    computePipelineCreateInfo.layout = this->computePipelineLayout;
+    computePipelineCreateInfo.basePipelineHandle = 0;
+    computePipelineCreateInfo.basePipelineIndex = 0;
+
+    if ( vkCreateComputePipelines(device, 0, 1, &computePipelineCreateInfo, nullptr, &this->computesPipeline) != VK_SUCCESS) {
+        throw std::runtime_error("computePipeline 생성 실패");
+    }
+
+    vkDestroyShaderModule(device, compShaderModule, 0);
 }
 
 void GameObject::createGraphicsPipeline() {
+    std::vector<char> vertShaderCode;
+    std::vector<char> fragShaderCode;
+
+    VkShaderModule vertShaderModule;
+    VkShaderModule fragShaderModule;
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float) swapChainExtent.width;
+    viewport.height = (float) swapChainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor{};
+    scissor.offset = {0, 0};
+    scissor.extent = swapChainExtent;
+
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.pViewports = &viewport;
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = &scissor;
+
+    VkPushConstantRange pushConstantRange{};
+    pushConstantRange.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(GraphicsConstantLayouts);
+
+    // create PipelineLayout
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &this->descriptorSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
+
+    if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &this->pipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+    // Init each Graphics Pipelines.
     for (Models* m : models) {
-        std::vector<char> vertShaderCode = readFile(m->_initParam.vertPath);
-        std::vector<char> fragShaderCode = readFile(m->_initParam.fragPath);
+        vertShaderCode = readFile(m->_initParam.vertPath);
+        fragShaderCode = readFile(m->_initParam.fragPath);
 
-        VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
-        VkShaderModule fragShaderModule = createShaderModule(fragShaderCode);
+        vertShaderModule = createShaderModule(vertShaderCode);
+        fragShaderModule = createShaderModule(fragShaderCode);
 
-        VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
         vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
         vertShaderStageInfo.module = vertShaderModule;
         vertShaderStageInfo.pName = "main";
 
-        VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
         fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
         fragShaderStageInfo.module = fragShaderModule;
@@ -694,25 +734,6 @@ void GameObject::createGraphicsPipeline() {
         // inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         inputAssembly.topology = m->_initParam.topologyMode;
         inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-        VkViewport viewport{};
-        viewport.x = 0.0f;
-        viewport.y = 0.0f;
-        viewport.width = (float) swapChainExtent.width;
-        viewport.height = (float) swapChainExtent.height;
-        viewport.minDepth = 0.0f;
-        viewport.maxDepth = 1.0f;
-
-        VkRect2D scissor{};
-        scissor.offset = {0, 0};
-        scissor.extent = swapChainExtent;
-
-        VkPipelineViewportStateCreateInfo viewportState{};
-        viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-        viewportState.viewportCount = 1;
-        viewportState.pViewports = &viewport;
-        viewportState.scissorCount = 1;
-        viewportState.pScissors = &scissor;
 
         VkPipelineRasterizationStateCreateInfo rasterizer{};
         rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -752,22 +773,6 @@ void GameObject::createGraphicsPipeline() {
         colorBlending.blendConstants[2] = 0.0f;
         colorBlending.blendConstants[3] = 0.0f;
 
-        VkPushConstantRange pushConstantRange{};
-        pushConstantRange.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
-        pushConstantRange.offset = 0;
-        pushConstantRange.size = sizeof(GraphicsConstantLayouts);
-
-        VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
-        pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        pipelineLayoutInfo.setLayoutCount = 1;
-        pipelineLayoutInfo.pSetLayouts = &m->descriptorSetLayout;
-        pipelineLayoutInfo.pushConstantRangeCount = 1;
-        pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
-        if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &m->pipelineLayout) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create pipeline layout!");
-        }
-
         VkGraphicsPipelineCreateInfo pipelineInfo{};
         pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipelineInfo.stageCount = 2;
@@ -779,14 +784,14 @@ void GameObject::createGraphicsPipeline() {
         pipelineInfo.pMultisampleState = &multisampling;
         pipelineInfo.pDepthStencilState = &depthStencil;
         pipelineInfo.pColorBlendState = &colorBlending;
-        pipelineInfo.layout = m->pipelineLayout;
+        pipelineInfo.layout = this->pipelineLayout;
         pipelineInfo.renderPass = renderPass;
         pipelineInfo.subpass = 0;
         pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-        if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m->graphicsPipeline) != VK_SUCCESS) {
-            throw std::runtime_error("failed to create graphics pipeline!");
-        }
+            if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m->graphicsPipeline) != VK_SUCCESS) {
+                throw std::runtime_error("failed to create graphics pipeline!");
+            }
 
         vkDestroyShaderModule(device, fragShaderModule, nullptr);
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -1844,7 +1849,7 @@ void GameObject::createDescriptorPool() {
 void GameObject::createDescriptorSets() 
 {
     for (Models* m : models) {
-        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), m->descriptorSetLayout);
+        std::vector<VkDescriptorSetLayout> layouts(swapChainImages.size(), this->descriptorSetLayout);
         VkDescriptorSetAllocateInfo allocInfo{};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m->descriptorPool;
@@ -2693,10 +2698,7 @@ glm::mat4 getQuart(glm::vec3 rotationAxis, float rotationAngle) {
     res.w = cos(rotationAngle / 2);
 
     n = 1.0f / sqrt(res.x*res.x + res.y*res.y + res.z*res.z + res.w*res.w);
-    res.x *= n;
-    res.y *= n;
-    res.z *= n;
-    res.w *= n;
+    res *= n;
 
     glm::mat4 res2Mat (
         1.0f - 2.0f*res.y*res.y - 2.0f*res.z*res.z,
@@ -2723,20 +2725,30 @@ glm::mat4 getQuart(glm::vec3 rotationAxis, float rotationAngle) {
     return res2Mat;
 }
 
-void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject) {
+void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject, Models* m) {
     Camera* cam = cameraObejctList[0];
     Light* light = lightObjectList[0];
+
+    glm::vec3 totPos(       gameObject->Position.x + m->Position.x,
+                            gameObject->Position.y + m->Position.y,
+                            gameObject->Position.z + m->Position.z
+                    );
+
+    glm::vec3 totScale(     gameObject->Scale.x * m->Scale.x,
+                            gameObject->Scale.y * m->Scale.y,
+                            gameObject->Scale.z * m->Scale.z
+                    );
 
     glm::mat4 RotX = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.x), glm::vec3(1, 0, 0));
     glm::mat4 RotY = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.y), glm::vec3(0, 1, 0));
     glm::mat4 RotZ = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.z), glm::vec3(0, 0, 1));
 
     UniformBufferObject ubo{};
-    ubo.model   =   glm::translate(glm::mat4(1.0f), gameObject->getPosition()) 
+    ubo.model   =   glm::translate(glm::mat4(1.0f), totPos) 
                     * RotX 
                     * RotY 
                     * RotZ 
-                    * glm::scale(glm::mat4(1.0f), gameObject->getScale());
+                    * glm::scale(glm::mat4(1.0f), totScale);
 
     ubo.pitch   = glm::rotate(glm::mat4(1.0f), glm::radians(cam->getRotate().x), glm::vec3(1.0f, 0.0f, 0.0f));
     ubo.yaw     = glm::rotate(glm::mat4(1.0f), glm::radians(cam->getRotate().y), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -2750,11 +2762,9 @@ void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject) {
 
     void* data;
 
-    for (Models* m : gameObject->models) {
-        vkMapMemory(device, m->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-        memcpy(data, &ubo, sizeof(ubo));
-        vkUnmapMemory(device, m->uniformBuffersMemory[currentImage]);
-    }
+    vkMapMemory(device, m->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+    memcpy(data, &ubo, sizeof(ubo));
+    vkUnmapMemory(device, m->uniformBuffersMemory[currentImage]);
 }
 
 void getBufferData(VkBuffer buffer, VkDeviceSize deviceSize) {
@@ -2905,10 +2915,10 @@ void drawFrame() {
     renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
     renderPassBeginInfo.pClearValues = clearValues.data();
 
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < 3; i++) {
         GraphicsConstantLayouts[0][i] = mainCam->getPosition()[i];
-    for (int i = 0; i < 3; i++)
         GraphicsConstantLayouts[1][i] = lightVec[i];
+    }
 
     VkDeviceSize deviceOffset = {0};
     for (GameObject* obj : gameObjectList) {
@@ -2916,20 +2926,28 @@ void drawFrame() {
             // compute pipeline
             vkCmdBindDescriptorSets(    commandBuffer, 
                                         VK_PIPELINE_BIND_POINT_COMPUTE, 
-                                        m->computePipelineLayout, 
+                                        obj->computePipelineLayout, 
                                         0, 
                                         1, 
                                         &m->descriptorSets[currentFrame], 
                                         0, 
                                         nullptr);
-            vkCmdBindPipeline(  commandBuffer, 
-                                VK_PIPELINE_BIND_POINT_COMPUTE, 
-                                m->computesPipeline);
-
-            vkCmdPushConstants(commandBuffer, m->computePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ComputeConstantLayouts), &ComputeConstantLayouts );
-
-            vkCmdDispatch( commandBuffer, 2, 1, 1);
         }
+
+        vkCmdPushConstants( commandBuffer, 
+                            obj->computePipelineLayout, 
+                            VK_SHADER_STAGE_COMPUTE_BIT, 
+                            0, 
+                            sizeof(ComputeConstantLayouts), 
+                            &ComputeConstantLayouts 
+                        );
+
+        vkCmdBindPipeline(  commandBuffer, 
+                            VK_PIPELINE_BIND_POINT_COMPUTE, 
+                            obj->computesPipeline
+                        );
+
+        vkCmdDispatch( commandBuffer, 2, 1, 1);
     }
 
     vkCmdBeginRenderPass(   commandBuffer, 
@@ -2939,24 +2957,22 @@ void drawFrame() {
     for (GameObject* obj : gameObjectList) {
         for (Models* m : obj->models) {
             // update UBO
-            updateUniformBuffer(imageIndex, obj);
+            updateUniformBuffer(imageIndex, obj, m);
 
             // graphcis pipeline
             vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m->graphicsPipeline);
 
-            vkCmdPushConstants(commandBuffer, m->pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(GraphicsConstantLayouts), &GraphicsConstantLayouts);
-
             vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m->vertexBuffer, &deviceOffset);
             vkCmdBindIndexBuffer(commandBuffer, m->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m->pipelineLayout, 0, 1, &m->descriptorSets[currentFrame], 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, obj->pipelineLayout, 0, 1, &m->descriptorSets[currentFrame], 0, nullptr);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(m->indices.size()), 1, 0, 0, 0);
+
+            vkCmdPushConstants(commandBuffer, obj->pipelineLayout, VK_SHADER_STAGE_ALL_GRAPHICS, 0, sizeof(GraphicsConstantLayouts), &GraphicsConstantLayouts);
         }
     }
 
     for (UI* obj : UIList) {
-        VkDeviceSize deviceOffset = {0};
-
         vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, obj->graphicsPipeline);
 
         vkCmdBindVertexBuffers(commandBuffer, 0, 1, &obj->vertexBuffer, &deviceOffset);

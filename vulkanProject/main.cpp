@@ -43,7 +43,7 @@ public:
         charactor = createObject(   "body", 
                                     "models/charactor/body.obj", 
                                     "textures/charactor/body.png", 
-                                    glm::vec3(0.0f, 10.0f, 0.0f), 
+                                    glm::vec3(0.0f, 5.0f, 0.0f), 
                                     charRot, 
                                     glm::vec3(1.0f), 
                                     std::string("spv/GameObject/soft.spv")
@@ -99,7 +99,7 @@ public:
         button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 50.0f, 50.0f));
     }
 
-    void Start() override{
+    void Start() override {
         routine::Start();
 
         charactor->initObject();
@@ -109,25 +109,31 @@ public:
 
         bottom->initObject();
         button->initObject();
+
+        transpose.torque = glm::vec3(5.0f, 0.0f, 10.0f);
     }
 
     void Update() override {
         routine::Update(); 
         
         // Light Dot Object
-        lightPos->setPosition(mainLight->getPosition());
+        lightPos->setPosition(mainLight->getPosition());     
 
         // interactive with bottom
         if (charactor->isCollider(bottom)) {
-            transpose.velo = glm::vec3(0.0f, 5.0f, 0.0f);
+            transpose.velo = glm::vec3(0.0f, -2.0f, 0.0f);
             transpose.accel = glm::vec3(0.0f);
+
+            charactor->Move(transpose.interaction(bottom->collider, _TIME_PER_UPDATE));
+
+            bottom->Rotate(transpose.torqBySec(_TIME_PER_UPDATE));
         }
         else {
             // Gravity
             transpose.accel = glm::vec3(0, -2.0f, 0);
-        }
 
-        charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
+            charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
+        }
 
         // 관측자 이동
         yOfCam = glm::radians(mainCam->getRotate().y);

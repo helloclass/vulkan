@@ -2734,14 +2734,19 @@ void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject, Models* 
                             gameObject->Position.z + m->Position.z
                     );
 
+    glm::vec3 totRot(       gameObject->Rotation.x + m->Rotate.x,
+                            gameObject->Rotation.y + m->Rotate.y,
+                            gameObject->Rotation.z + m->Rotate.z
+                    );
+
     glm::vec3 totScale(     gameObject->Scale.x * m->Scale.x,
                             gameObject->Scale.y * m->Scale.y,
                             gameObject->Scale.z * m->Scale.z
                     );
 
-    glm::mat4 RotX = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.x), glm::vec3(1, 0, 0));
-    glm::mat4 RotY = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.y), glm::vec3(0, 1, 0));
-    glm::mat4 RotZ = glm::rotate(glm::mat4(1.0f), glm::radians(gameObject->Rotate.z), glm::vec3(0, 0, 1));
+    glm::mat4 RotX = glm::rotate(glm::mat4(1.0f), glm::radians(totRot.x), glm::vec3(1, 0, 0));
+    glm::mat4 RotY = glm::rotate(glm::mat4(1.0f), glm::radians(totRot.y), glm::vec3(0, 1, 0));
+    glm::mat4 RotZ = glm::rotate(glm::mat4(1.0f), glm::radians(totRot.z), glm::vec3(0, 0, 1));
 
     UniformBufferObject ubo{};
     ubo.model   =   glm::translate(glm::mat4(1.0f), totPos) 

@@ -417,7 +417,10 @@ class ColliderBox {
 public: 
     float posX, posY, posZ;
     float localPosX, localPosY, localPosZ;
+    float rotX, rotY, rotZ;
     float sizeX, sizeY, sizeZ;
+
+    glm::vec3 V[8];
 
     void setSize2D(float x, float y, float localX, float localY, float sizeX, float sizeY) {
         this->posX = x;
@@ -426,6 +429,15 @@ public:
         this->localPosY = localY;
         this->sizeX = sizeX;
         this->sizeY = sizeY;
+
+        V[0] = glm::vec3(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ);
+        V[1] = glm::vec3(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ);
+        V[2] = glm::vec3(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ);
+        V[3] = glm::vec3(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ);
+        V[4] = glm::vec3(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ);
+        V[5] = glm::vec3(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ);
+        V[6] = glm::vec3(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ);
+        V[7] = glm::vec3(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ);
     }
 
     void setSize2D(glm::vec2 center, glm::vec2 scale) {
@@ -435,10 +447,36 @@ public:
         this->localPosY = 0.0f;
         this->sizeX = scale.x;
         this->sizeY = scale.y;
+
+        V[0] = glm::vec3(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ);
+        V[1] = glm::vec3(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ);
+        V[2] = glm::vec3(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ);
+        V[3] = glm::vec3(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ);
+        V[4] = glm::vec3(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ);
+        V[5] = glm::vec3(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ);
+        V[6] = glm::vec3(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ);
+        V[7] = glm::vec3(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ);
+    }
+
+    void vUpdate () {
+        glm::mat4 mat(1.0f), rotMat;
+        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
+
+        V[0] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[1] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[2] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[3] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[4] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[5] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[6] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[7] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
     }
 
     void setSize3D( float x, float y, float z,
                     float localX, float localY, float localZ,
+                    float rotX, float rotY, float rotZ,
                     float sizeX, float sizeY, float sizeZ) {
         this->posX = x;
         this->posY = y;
@@ -446,21 +484,55 @@ public:
         this->localPosX = localX;
         this->localPosY = localY;
         this->localPosZ = localZ;
+        this->rotX = rotX;
+        this->rotY = rotY;
+        this->rotZ = rotZ;
         this->sizeX = sizeX;
         this->sizeY = sizeY;
         this->sizeZ = sizeZ;
+
+        glm::mat4 mat(1.0f), rotMat;
+        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
+
+        V[0] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[1] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[2] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[3] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[4] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[5] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[6] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[7] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
     }
 
-    void setSize3D(glm::vec3 center, glm::vec3 local, glm::vec3 scale) {
+    void setSize3D(glm::vec3 center, glm::vec3 local, glm::vec3 rot, glm::vec3 scale) {
         this->posX = center.x;
         this->posY = center.y;
         this->posZ = center.z;
         this->localPosX = local.x;
         this->localPosY = local.y;
         this->localPosZ = local.z;
+        this->rotX = rot.x;
+        this->rotY = rot.y;
+        this->rotZ = rot.z;
         this->sizeX = scale.x;
         this->sizeY = scale.y;
         this->sizeZ = scale.z;
+
+        glm::mat4 mat(1.0f), rotMat;
+        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
+
+        V[0] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[1] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[2] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[3] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[4] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ - sizeZ, 1.0f);
+        V[5] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY - sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[6] = rotMat * glm::vec4(posX + localPosX - sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
+        V[7] = rotMat * glm::vec4(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ, 1.0f);
     }
 
     bool isCollision2D(ColliderBox* target) {
@@ -473,22 +545,52 @@ public:
     }
 
     bool isCollision3D(ColliderBox* target) {
-        bool x, y, z;
-        float px, py, pz, tx, ty, tz;
+        bool a (false), b(false);
+        glm::vec3 vmin(target->V[0]), vmax(target->V[7]);
+        float vx(posX + localPosX), vy(posY + localPosY), vz(posZ + localPosZ);
 
-        px = posX + localPosX;
-        py = posY + localPosY;
-        pz = posZ + localPosZ;
-        tx = target->posX + target->localPosX; 
-        ty = target->posY + target->localPosY; 
-        tz = target->posZ + target->localPosZ; 
+        glm::mat4 mat(1.0f), rotMat;
+        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
 
-        x = !((px + sizeX) < (tx - target->sizeX) || (px - sizeX) > (tx + target->sizeX));
-        y = !((py + sizeY) < (ty - target->sizeY) || (py - sizeY) > (ty + target->sizeY));
-        z = !((pz + sizeZ) < (tz - target->sizeZ) || (pz - sizeZ) > (tz + target->sizeZ));
+        V[0] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz - sizeZ, 1.0f);
+        V[1] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz - sizeZ, 1.0f);
+        V[2] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz - sizeZ, 1.0f);
+        V[3] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz + sizeZ, 1.0f);
+        V[4] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz - sizeZ, 1.0f);
+        V[5] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz + sizeZ, 1.0f);
+        V[6] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz + sizeZ, 1.0f);
+        V[7] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz + sizeZ, 1.0f);
 
-        return (x && y) && z;
+        for (glm::vec3 v : this->V) {
+            a = (v.x > vmin.x && v.y > vmin.y && v.z > vmin.z);
+            b = (v.x < vmax.x && v.y < vmax.y && v.z < vmax.z);
+
+            if (a && b)
+                return true;
+
+        }
+        return false;
     }
+
+    // bool isCollision3D(ColliderBox* target) {
+    //     bool x, y, z;
+    //     float px, py, pz, tx, ty, tz;
+
+    //     px = posX + localPosX;
+    //     py = posY + localPosY;
+    //     pz = posZ + localPosZ;
+    //     tx = target->posX + target->localPosX; 
+    //     ty = target->posY + target->localPosY; 
+    //     tz = target->posZ + target->localPosZ; 
+
+    //     x = !((px + sizeX) < (tx - target->sizeX) || (px - sizeX) > (tx + target->sizeX));
+    //     y = !((py + sizeY) < (ty - target->sizeY) || (py - sizeY) > (ty + target->sizeY));
+    //     z = !((pz + sizeZ) < (tz - target->sizeZ) || (pz - sizeZ) > (tz + target->sizeZ));
+
+    //     return (x && y) && z;
+    // }
 };
 
 // 그래픽스파이프라인 초기 속성 (per GameObject)
@@ -566,24 +668,6 @@ public:
         this->_initParam.cullMode = VK_CULL_MODE_NONE;
     }
 
-    Models(std::string name, std::string objPath, std::string textPath, glm::vec3 pos, glm::vec3 scale) {
-        this->Name = name;
-
-        this->objectPath = objPath;
-        this->texturePath = textPath;
-
-        this->Position = pos;
-        this->Rotate = glm::vec3(0.0f);
-        this->Scale = scale;
-
-        this->_initParam.vertPath = "spv/GameObject/vert.spv";
-        this->_initParam.fragPath = "spv/GameObject/base.spv";
-
-        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
-        this->_initParam.cullMode = VK_CULL_MODE_NONE;
-    }
-
     Models(std::string name, std::string objPath, std::string textPath, glm::vec3 scale) {
         this->Name = name;
 
@@ -601,12 +685,35 @@ public:
         this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
         this->_initParam.cullMode = VK_CULL_MODE_NONE;
     }
+
+    Models(std::string name, std::string objPath, std::string textPath, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale) {
+        this->Name = name;
+
+        this->objectPath = objPath;
+        this->texturePath = textPath;
+
+        this->Position = pos;
+        this->Rotate = rot;
+        this->Scale = scale;
+
+        this->_initParam.vertPath = "spv/GameObject/vert.spv";
+        this->_initParam.fragPath = "spv/GameObject/base.spv";
+
+        this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+        this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
+        this->_initParam.cullMode = VK_CULL_MODE_NONE;
+    }
 };
 
 class Transpose {
 public:
+    // 속도와 가속도
     glm::vec3 velo;
     glm::vec3 accel;
+
+    // 회전 속도와 회전 가속도
+    glm::vec3 torque;
+    glm::vec3 accelTorque;
 
     void setVelocity(glm::vec3 vel) {
         this->velo = vel;
@@ -615,16 +722,54 @@ public:
         this->accel = accel;
     }
 
+    void setTorque(glm::vec3 torq) {
+        this->torque = torq;
+    }
+
+    void setAccelTorque(glm::vec3 accelTorq) {
+        this->accelTorque = accelTorq;
+    }
+
     glm::vec3 getVelocity() {
         return this->velo;
     }
     glm::vec3 getAccel() {
         return this->accel;
     }
+    glm::vec3 getTorque() {
+        return this->torque;
+    }
+    glm::vec3 getAccelTorque() {
+        return this->accelTorque;
+    }
 
+    // 초당 속도 계산기
     glm::vec3 velBySec(float nanoSec) {
         velo += accel * nanoSec;
         return velo * nanoSec;
+    }
+
+    // 초당 토크 계산기
+    glm::vec3 torqBySec(float nanoSec) {
+        torque += accelTorque * nanoSec;
+        return torque * nanoSec;
+    }
+
+    glm::vec3 interaction(ColliderBox* target, float nanoSec) {
+        velo += accel * nanoSec;
+        // 원 속도
+        glm::vec3 base = velo * nanoSec;
+        glm::vec3 res(0.0f);
+
+        // y축 인터렉션
+        glm::vec3 normal (target->rotX, target->rotY, target->rotZ);
+
+        res.x = base.y * cos(glm::radians(normal.z)) * glm::radians(normal.z);
+        res.z = base.y * cos(glm::radians(normal.x)) * glm::radians(normal.x);
+
+        res.y = base.y * sin(glm::radians(normal.z + normal.x));
+
+        return res;
     }
 };
 
@@ -646,7 +791,7 @@ public:
     std::string Name;
 
     glm::vec3 Position;
-    glm::vec3 Rotate;
+    glm::vec3 Rotation;
     glm::vec3 Scale;
 
     ColliderBox* collider;
@@ -672,7 +817,7 @@ public:
         models.push_back(new Models(Name, objectPath, texturePath));
 
         this->Position = glm::vec3(0.0f);
-        this->Rotate = glm::vec3(0.0f);
+        this->Rotation = glm::vec3(0.0f);
         this->Scale = glm::vec3(1.0f);
 
         this->collider = NULL;
@@ -684,7 +829,7 @@ public:
         models.push_back(new Models(Name, objectPath, texturePath));
 
         this->Position = Position;
-        this->Rotate = Rotate;
+        this->Rotation = Rotate;
         this->Scale = Scale;
 
         this->collider = NULL;
@@ -693,14 +838,31 @@ public:
     // getter setter
     void setIndex(uint32_t idx)             { this->Index = idx; }
     void setName(std::string name)          { this->Name = name; }
-    void setPosition(glm::vec3 pos)         { this->Position = pos; }
-    void setRotate(glm::vec3 rot)           { this->Rotate = rot; }
+    void setPosition(glm::vec3 pos)         {   this->Position = pos;
+                                                if (this->collider) {
+                                                    this->collider->posX = this->Position.x;
+                                                    this->collider->posY = this->Position.y;
+                                                    this->collider->posZ = this->Position.z;
+                                                }
+                                            }
+
+    void setRotate(glm::vec3 rot)           {   this->Rotation = rot;
+                                                this->Rotation.x *= -1;
+                                                if (this->collider) {
+                                                    this->collider->rotX = rot.x;
+                                                    this->collider->rotY = rot.y;
+                                                    this->collider->rotZ = rot.z;
+
+                                                    this->collider->vUpdate();
+                                                }
+                                            }
+
     void setScale(glm::vec3 scale)          { this->Scale = scale; }
 
     uint32_t getIndex()                     { return Index; }
     std::string getName()                   { return Name; }
     glm::vec3 getPosition()                 { return Position; }
-    glm::vec3 getRotate()                   { return Rotate; }
+    glm::vec3 getRotate()                   { return Rotation; }
     glm::vec3 getScale()                    { return Scale; }
 
     // Transpose
@@ -709,6 +871,17 @@ public:
                                                 this->collider->posX = this->Position.x;
                                                 this->collider->posY = this->Position.y;
                                                 this->collider->posZ = this->Position.z;
+                                                
+                                                this->collider->vUpdate();
+                                            }
+
+    void Rotate(glm::vec3 torq)             { 
+                                                this->Rotation += torq;
+                                                this->collider->rotX = this->Rotation.x;
+                                                this->collider->rotY = this->Rotation.y;
+                                                this->collider->rotZ = this->Rotation.z;
+
+                                                this->collider->vUpdate();
                                             }
 
     // append subModel 
@@ -716,19 +889,19 @@ public:
         models.push_back(new Models(Name, objectPath, texturePath, fragPath));
     }
 
-    void appendModel(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 pos, glm::vec3 scale) {
-        models.push_back(new Models(Name, objectPath, texturePath, pos, scale));
+    void appendModel(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 pos, glm::vec3 rot, glm::vec3 scale) {
+        models.push_back(new Models(Name, objectPath, texturePath, pos, rot, scale));
     }
 
     void setCollider(glm::vec3 scale) {
         this->collider = new ColliderBox();
 
-        this->collider->setSize3D(this->Position, glm::vec3(0.0f), scale);
+        this->collider->setSize3D(this->Position, glm::vec3(0.0f), glm::vec3(0.0f), scale);
     }
 
     void setCollider(glm::vec3 localPos, glm::vec3 scale) {
         this->collider = new ColliderBox();
-        this->collider->setSize3D(this->Position, localPos, scale);
+        this->collider->setSize3D(this->Position, localPos, glm::vec3(0.0f), scale);
     }
 
     bool isCollider(GameObject* go) {
@@ -743,6 +916,7 @@ public:
                             "models/Effect/collider.obj", 
                             "textures/effect/collider.png", 
                             glm::vec3(this->collider->localPosX , this->collider->localPosY, this->collider->localPosZ),
+                            glm::vec3(0.0f),
                             glm::vec3(this->collider->sizeX, this->collider->sizeY, this->collider->sizeZ));
     }
 

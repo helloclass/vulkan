@@ -29,6 +29,12 @@
 #include <set>
 #include <unordered_map>
 
+class GameObject;
+class UI;
+class ColliderBox;
+class Models;
+class Transpose;
+
 float ComputeConstantLayouts[][4] = {
     { 0.0f, 0.0f, 0.0f, 0.0f },     // CamPos
     { 0.0f, 0.0f, 0.0f, 0.0f },     // MousePos
@@ -415,6 +421,7 @@ void getImageData(VkImage& src, VkDeviceSize& imageSize, VkCommandBuffer& comman
 
 class ColliderBox {
 public: 
+    // centor
     float posX, posY, posZ;
     float localPosX, localPosY, localPosZ;
     float rotX, rotY, rotZ;
@@ -542,6 +549,45 @@ public:
         y = !((posY + sizeY) < (target->posY - target->sizeY) || (posX - sizeY) > (target->posY + target->sizeY));
 
         return x && y;
+    }
+
+    bool isColliderVal = false;
+
+    bool isCollisionEnter3D(ColliderBox* target) {
+        bool a (false), b(false), res(false);
+        glm::vec3 vmin(target->V[0]), vmax(target->V[7]);
+        float vx(posX + localPosX), vy(posY + localPosY), vz(posZ + localPosZ);
+
+        glm::mat4 mat(1.0f), rotMat;
+        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
+                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
+
+        V[0] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz - sizeZ, 1.0f);
+        V[1] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz - sizeZ, 1.0f);
+        V[2] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz - sizeZ, 1.0f);
+        V[3] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz + sizeZ, 1.0f);
+        V[4] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz - sizeZ, 1.0f);
+        V[5] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz + sizeZ, 1.0f);
+        V[6] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz + sizeZ, 1.0f);
+        V[7] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz + sizeZ, 1.0f);
+
+        for (glm::vec3 v : this->V) {
+            a = (v.x > vmin.x && v.y > vmin.y && v.z > vmin.z);
+            b = (v.x < vmax.x && v.y < vmax.y && v.z < vmax.z);
+
+            if (a && b) {
+                res = true;
+                break;
+            }
+        }
+
+        if (res == false || isColliderVal == res) {
+            isColliderVal = res;
+            return false;
+        }
+        isColliderVal = res;
+        return true;
     }
 
     bool isCollision3D(ColliderBox* target) {
@@ -755,21 +801,19 @@ public:
         return torque * nanoSec;
     }
 
-    glm::vec3 interaction(ColliderBox* target, float nanoSec) {
-        velo += accel * nanoSec;
-        // 원 속도
-        glm::vec3 base = velo * nanoSec;
-        glm::vec3 res(0.0f);
-
-        // y축 인터렉션
-        glm::vec3 normal (target->rotX, target->rotY, target->rotZ);
-
-        res.x = base.y * cos(glm::radians(normal.z)) * glm::radians(normal.z);
-        res.z = base.y * cos(glm::radians(normal.x)) * glm::radians(normal.x);
-
-        res.y = base.y * sin(glm::radians(normal.z + normal.x));
-
-        return res;
+    void interaction(   GameObject* go,
+                        GameObject* target,
+                        float delta) 
+    {
+        glm::vec3 theta(go->Position - target->Position);   
+        float R = glm::length(theta);
+        
+        float zDegree = target->Rotation.z + 10.0f;
+        
+        this->velo = R * glm::vec3(     cos(glm::radians(zDegree)), 
+                                        sin(glm::radians(zDegree)), 
+                                        0
+                                    ) - go->Position;
     }
 };
 
@@ -877,12 +921,18 @@ public:
 
     void Rotate(glm::vec3 torq)             { 
                                                 this->Rotation += torq;
+
                                                 this->collider->rotX = this->Rotation.x;
                                                 this->collider->rotY = this->Rotation.y;
                                                 this->collider->rotZ = this->Rotation.z;
 
                                                 this->collider->vUpdate();
                                             }
+
+    glm::vec3 getNormal() {
+        // return glm::vec3(-sin(glm::radians(Rotation.y)), sin(glm::radians(Rotation.x)), -cos(glm::radians(Rotation.y)));
+        return glm::vec3(-sin(glm::radians(Rotation.y)), 0.0f, -cos(glm::radians(Rotation.y)));
+    }
 
     // append subModel 
     void appendModel(std::string Name, std::string objectPath, std::string texturePath, std::string fragPath = "spv/GameObject/base.spv") {
@@ -904,7 +954,14 @@ public:
         this->collider->setSize3D(this->Position, localPos, glm::vec3(0.0f), scale);
     }
 
-    bool isCollider(GameObject* go) {
+    bool onColliderEnter(GameObject* go) {
+        if (!go->collider)
+            return false;
+
+        return this->collider->isCollisionEnter3D(go->collider);
+    }
+
+    bool onCollider(GameObject* go) {
         if (!go->collider)
             return false;
 
@@ -1226,9 +1283,13 @@ private:
     glm::vec3 Rotation;
 
 public: 
+    GameObject* target;
+
     Camera() {
         cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
         cameraUp    = glm::vec3(0.0f, 1.0f,  0.0f);
+
+        target = NULL;
     }
 
     Camera(glm::vec3 pos, glm::vec3 rot) {
@@ -1237,6 +1298,8 @@ public:
 
         CameraPosition = pos;
         Rotation = rot;
+
+        target = NULL;
     }
 
     void setIndex(uint32_t Index)           { this->Index = Index; }

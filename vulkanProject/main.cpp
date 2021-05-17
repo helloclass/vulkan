@@ -22,6 +22,7 @@ float camSpeed = 5000.0f;
 float camQuart = 100.0f;
 
 float yOfCam = 0.0f;
+
 glm::vec3 frontOfCam(0.0f);
 glm::vec3 rightOfCam(0.0f);
 
@@ -34,17 +35,15 @@ public:
 
         std::string pwd = getAbsolutePath();
 
-        mainCam = createCamera(glm::vec3(0.0f, 4.0f, 20.0f));
+        mainCam = createCamera(glm::vec3(0.0f, 2.0f, 20.0f));
         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
-
-        glm::vec3 charRot = glm::vec3(0, 180, 0);
 
         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
         charactor = createObject(   "body", 
                                     "models/charactor/body.obj", 
                                     "textures/charactor/body.png", 
-                                    glm::vec3(0.0f, 5.0f, 0.0f), 
-                                    charRot, 
+                                    glm::vec3(5.0f, 5.0f, 0.0f), 
+                                    glm::vec3(0, 0, 0), 
                                     glm::vec3(1.0f), 
                                     std::string("spv/GameObject/soft.spv")
                                 );
@@ -67,6 +66,8 @@ public:
 
         charactor->setCollider(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.5f, 1.0f, 0.5f));
         charactor->drawCollider();
+
+        // mainCam->target = charactor;
 
         lightPos = createObject(    "lightPos",
                                     "models/Light.obj", 
@@ -92,7 +93,7 @@ public:
                                 "textures/bottom.jpg", 
                                 glm::vec3(0.0f, 0.0f, 0.0f));
 
-        bottom->setCollider(glm::vec3(10.0f, 0.5f, 10.0f));
+        bottom->setCollider(glm::vec3(0.0f, 0.1f, 0.0f), glm::vec3(10.0f, 0.5f, 10.0f));
         bottom->drawCollider();
 
         // UI
@@ -110,7 +111,7 @@ public:
         bottom->initObject();
         button->initObject();
 
-        transpose.torque = glm::vec3(5.0f, 0.0f, 10.0f);
+        transpose.torque = glm::vec3(0.0f, 0.0f, 5.0f);
     }
 
     void Update() override {
@@ -120,26 +121,27 @@ public:
         lightPos->setPosition(mainLight->getPosition());     
 
         // interactive with bottom
-        if (charactor->isCollider(bottom)) {
-            transpose.velo = glm::vec3(0.0f, -2.0f, 0.0f);
+        if (charactor->onColliderEnter(bottom)) {
+            transpose.velo = glm::vec3(0.0f, 0.0f, 0.0f);
             transpose.accel = glm::vec3(0.0f);
-
-            charactor->Move(transpose.interaction(bottom->collider, _TIME_PER_UPDATE));
+        }
+        else if (charactor->onCollider(bottom)) {
+            transpose.interaction(charactor->Position, bottom->Position, charactor->Rotation, bottom->Rotation, _TIME_PER_UPDATE);
 
             bottom->Rotate(transpose.torqBySec(_TIME_PER_UPDATE));
         }
         else {
             // Gravity
             transpose.accel = glm::vec3(0, -2.0f, 0);
-
-            charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
         }
+
+        charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
 
         // 관측자 이동
         yOfCam = glm::radians(mainCam->getRotate().y);
 
-        frontOfCam = glm::vec3(sin(-yOfCam), 0.0f, cos(-yOfCam)) * camSpeed * _TIME_PER_UPDATE;
-        rightOfCam = glm::vec3(cos(yOfCam), 0.0f, sin(yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+        frontOfCam  = glm::vec3(sin(-yOfCam), 0.0f, cos(-yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+        rightOfCam  = glm::vec3(cos(yOfCam), 0.0f, sin(yOfCam)) * camSpeed * _TIME_PER_UPDATE;
 
         if (!input::getKey(GLFW_KEY_LEFT_ALT)) {
             if (input::getKey(GLFW_KEY_W))

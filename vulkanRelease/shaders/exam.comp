@@ -1,0 +1,26 @@
+#version 430 core
+#extension GL_EXT_debug_printf : enable
+
+layout(local_size_x = 32, local_size_y = 32) in;
+
+layout( set = 0, binding = 3, rgba32f ) uniform imageBuffer StorageTexelBuffer;
+
+layout( push_constant ) uniform TargetVec{
+    vec3 CamPos;
+    vec3 MousePos;
+    vec3 HalfPos;
+} targetVec;
+
+void main() {
+    // vec4 position = imageLoad( StorageTexelBuffer, int(gl_GlobalInvocationID.x * 2) );
+
+    // (-1.0f ~ 1.0f)
+    vec3 Height = targetVec.MousePos;
+    
+    vec3 h1 = vec3( 0.0f, Height.y, 1.0f - Height.y );
+    vec3 h2 = targetVec.HalfPos - targetVec.CamPos;
+
+    float res = normalize(dot(h1, h2));
+
+    imageStore( StorageTexelBuffer, int(gl_GlobalInvocationID.x * 2), vec4(res, 0.0f, 0.0f, 1.0f));
+}

@@ -2725,6 +2725,28 @@ glm::mat4 getQuart(glm::vec3 rotationAxis, float rotationAngle) {
     return res2Mat;
 }
 
+glm::mat4 lookAt(glm::vec3 camPos, glm::vec3 target) {
+    glm::vec3 normUp (0.0f, 1.0f, 0.0f);
+
+    glm::vec3 Forward = glm::normalize(camPos - target);
+    glm::vec3 Side = glm::normalize(glm::cross(normUp, Forward));
+
+    glm::vec3 Up = glm::normalize(glm::cross(Forward, Side));
+
+    glm::vec3 pos(  -glm::dot(camPos, Side), 
+                    -glm::dot(camPos, Up), 
+                    -glm::dot(camPos, Forward)
+                );
+
+    glm::mat4 res ( Side.x, Up.x, Forward.x, 0.0,
+                    Side.y, Up.y, Forward.y, 0.0,
+                    Side.z, Up.z, Forward.z, 0.0,
+                    pos.x , pos.y, pos.z    , 1.0
+                );
+
+    return res;
+}
+
 void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject, Models* m) {
     Camera* cam = cameraObejctList[0];
     Light* light = lightObjectList[0];
@@ -2759,7 +2781,10 @@ void updateUniformBuffer(uint32_t currentImage, GameObject* gameObject, Models* 
     ubo.yaw     = glm::rotate(glm::mat4(1.0f), glm::radians(cam->getRotate().y), glm::vec3(0.0f, 1.0f, 0.0f));
     ubo.roll    = glm::rotate(glm::mat4(1.0f), glm::radians(cam->getRotate().z), glm::vec3(0.0f, 0.0f, 1.0f));
 
-    ubo.view    = glm::lookAt(cam->getPosition(), cam->getPosition() + cam->getFront(), glm::vec3(0, 1, 0));
+    if (!cam->target)
+        ubo.view = glm::lookAt(cam->getPosition(), cam->getPosition() + cam->getFront(), glm::vec3(0, 1, 0));
+    else
+        ubo.view = lookAt(cam->getPosition(), cam->target->Position); 
     ubo.proj    = getPersp();
 
     lightVec = light->getPosition() - gameObject->getPosition();

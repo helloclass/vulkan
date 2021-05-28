@@ -1118,28 +1118,37 @@ void createDepthResources() {
 }
 
 void GameObject::createTextureImage() {
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels;
+    VkDeviceSize imageSize;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+
+    void* data;
+
+    VkImageCreateInfo imageCreateInfo;
+
+    VkPhysicalDeviceMemoryProperties memProp;
+    vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProp);
+
     for (Models* m : models) {
-        int texWidth, texHeight, texChannels;
-        stbi_uc* pixels = stbi_load(m->texturePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
-        VkDeviceSize imageSize = texWidth * texHeight * 4;
+        pixels = stbi_load(m->texturePath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+        imageSize = texWidth * texHeight * 4;
         mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
 
         if (!pixels) {
             throw std::runtime_error("failed to load texture image!");
         }
 
-        VkBuffer stagingBuffer;
-        VkDeviceMemory stagingBufferMemory;
         createBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-        void* data;
         vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
             memcpy(data, pixels, static_cast<size_t>(imageSize));
         vkUnmapMemory(device, stagingBufferMemory);
 
         stbi_image_free(pixels);
 
-        VkImageCreateInfo imageCreateInfo;
         imageCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageCreateInfo.pNext = nullptr;
         imageCreateInfo.flags = 0;
@@ -1160,9 +1169,6 @@ void GameObject::createTextureImage() {
 
         VkMemoryRequirements memRequir;
         vkGetImageMemoryRequirements(device, m->textureImage, &memRequir);
-
-        VkPhysicalDeviceMemoryProperties memProp;
-        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProp);
 
         int memTypeIdx = -1;
         for (int i = 0; i< memProp.memoryTypeCount; i++) {
@@ -1185,8 +1191,10 @@ void GameObject::createTextureImage() {
             throw std::runtime_error("textureImageMemory 할당 실패");
         }
 
+        // Image, ImageMermory Binding..
         vkBindImageMemory(device, m->textureImage, m->textureImageMemory, 0);
 
+        // Recording..
         VkCommandBuffer recordBuffer;
 
         VkCommandBufferAllocateInfo cmdbufAllocInfo;
@@ -1198,12 +1206,11 @@ void GameObject::createTextureImage() {
 
         vkAllocateCommandBuffers(device, &cmdbufAllocInfo, &recordBuffer);
 
-        VkCommandBufferBeginInfo cmdbufBeginInfo;
+        VkCommandBufferBeginInfo cmdbufBeginInfo{};
         cmdbufBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         cmdbufBeginInfo.pNext = nullptr;
         cmdbufBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-        Vertex();
         vkBeginCommandBuffer(recordBuffer, &cmdbufBeginInfo);
 
         VkImageMemoryBarrier imageMemoryBarrier{};
@@ -1269,7 +1276,6 @@ void GameObject::createTextureImage() {
                                     1};
 
         vkCmdCopyBufferToImage(recordBuffer, stagingBuffer, m->textureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufImgCopy);
-
         vkEndCommandBuffer(recordBuffer);
 
         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1285,6 +1291,97 @@ void GameObject::createTextureImage() {
         vkFreeMemory(device, stagingBufferMemory, nullptr);
 
         generateMipmaps(m->textureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+
+        // define alpha 
+        if (!m->alphaPath.empty()) {
+            pixels = stbi_load(m->alphaPath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+
+            if (!pixels) {
+                throw std::runtime_error("failed to load alpha texture image!");
+            }
+
+            // create Staging, StagingBuffer
+            createBuffer(   imageSize, 
+                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT, 
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
+                            stagingBuffer, 
+                            stagingBufferMemory);
+
+            vkMapMemory(device, stagingBufferMemory, 0, imageSize, 0, &data);
+                memcpy(data, pixels, static_cast<size_t>(imageSize));
+            vkUnmapMemory(device, stagingBufferMemory);
+
+            stbi_image_free(pixels);
+
+            if (vkCreateImage(device, &imageCreateInfo, nullptr, &m->alphaTextureImage) != VK_SUCCESS) {
+                throw std::runtime_error("textureImage 생성 실패");
+            }
+
+            vkGetImageMemoryRequirements(device, m->alphaTextureImage, &memRequir);
+
+            memTypeIdx = -1;
+            for (int i = 0; i< memProp.memoryTypeCount; i++) {
+                if (memRequir.memoryTypeBits & (1 << i) && memProp.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT == VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {
+                    memTypeIdx = i;
+                    break;
+                }
+            }
+            if (memTypeIdx == -1) {
+                throw std::runtime_error("alphaTextureImageMemory에서 요구하는 유형의 메모리를 찾을 수 없음.");
+            }
+
+            memAlloc.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+            memAlloc.pNext = nullptr;
+            memAlloc.memoryTypeIndex = memTypeIdx;
+            memAlloc.allocationSize = memRequir.size;
+
+            if (vkAllocateMemory(device, &memAlloc, nullptr, &m->alphaTextureImageMemory) != VK_SUCCESS) {
+                throw std::runtime_error("textureImageMemory 할당 실패");
+            }
+
+            // Image, ImageMermory Binding..
+            vkBindImageMemory(device, m->alphaTextureImage, m->alphaTextureImageMemory, 0);
+            
+            // Recording..
+            vkAllocateCommandBuffers(device, &cmdbufAllocInfo, &recordBuffer);
+            vkBeginCommandBuffer(recordBuffer, &cmdbufBeginInfo);
+
+            imageMemoryBarrier.image = m->alphaTextureImage;
+
+            vkCmdPipelineBarrier(   recordBuffer, 
+                                    VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+                                    VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                    0,
+                                    0, nullptr,
+                                    0, nullptr,
+                                    1, &imageMemoryBarrier);
+
+
+            vkEndCommandBuffer(recordBuffer);
+
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(graphicsQueue);
+
+            vkFreeCommandBuffers(device, commandPool, 1, &recordBuffer);
+
+            vkAllocateCommandBuffers(device, &cmdbufAllocInfo, &recordBuffer);
+
+            vkBeginCommandBuffer(recordBuffer, &cmdbufBeginInfo);
+
+            vkCmdCopyBufferToImage(recordBuffer, stagingBuffer, m->alphaTextureImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &bufImgCopy);
+
+            vkEndCommandBuffer(recordBuffer);
+
+            vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueWaitIdle(graphicsQueue);
+
+            vkFreeCommandBuffers(device, commandPool, 1, &recordBuffer);
+
+            vkDestroyBuffer(device, stagingBuffer, nullptr);
+            vkFreeMemory(device, stagingBufferMemory, nullptr);
+
+            generateMipmaps(m->alphaTextureImage, VK_FORMAT_R8G8B8A8_SRGB, texWidth, texHeight, mipLevels);
+        }
     }
 }
 
@@ -1451,6 +1548,15 @@ void GameObject::createTextureImageView() {
 
         if (vkCreateImageView(device, &createInfo, nullptr, &m->textureImageView) != VK_SUCCESS) {
             throw std::runtime_error("textureImageView 생성 실패");
+        }
+
+        // create alpha textureImageView
+        if (!m->alphaPath.empty()) {
+            createInfo.image = m->alphaTextureImage;
+
+            if (vkCreateImageView(device, &createInfo, nullptr, &m->alphaTextureImageView) != VK_SUCCESS) {
+                throw std::runtime_error("alphaTextureImageView 생성 실패");
+            }
         }
     }
 }
@@ -1873,9 +1979,16 @@ void GameObject::createDescriptorSets()
             imageInfo.sampler = textureSampler;
 
             VkDescriptorImageInfo alphaImageInfo{};
-            alphaImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            alphaImageInfo.imageView = m->textureImageView;
-            alphaImageInfo.sampler = textureSampler;
+            if (!m->alphaPath.empty()) {
+                alphaImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                alphaImageInfo.imageView = m->alphaTextureImageView;
+                alphaImageInfo.sampler = textureSampler;
+            }
+            else {
+                alphaImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                alphaImageInfo.imageView = m->textureImageView;
+                alphaImageInfo.sampler = textureSampler;
+            }
 
             VkDescriptorBufferInfo texelBufferInfo{};
             texelBufferInfo.buffer = m->texelUniformBuffer;
@@ -3072,8 +3185,7 @@ GameObject* createObject(   std::string Name,
                             glm::vec3 Rotate = glm::vec3(0.0f), 
                             glm::vec3 Scale = glm::vec3(1.0f), 
                             std::string fragTexture = "spv/GameObject/base.spv") {
-    GameObject* newGameObject = new GameObject(Name, objectPath, texturePath, Position, Rotate, Scale);
-    newGameObject->models[0]->_initParam.fragPath = fragTexture;
+    GameObject* newGameObject = new GameObject(Name, objectPath, texturePath, Position, Rotate, Scale, fragTexture);
 
     gameObjectList.push_back(newGameObject);
     newGameObject->setIndex(gameObjectList.size());

@@ -33,7 +33,6 @@ class GameObject;
 class UI;
 class ColliderBox;
 class Models;
-class Transpose;
 
 float ComputeConstantLayouts[][4] = {
     { 0.0f, 0.0f, 0.0f, 0.0f },     // CamPos
@@ -45,12 +44,13 @@ float GraphicsConstantLayouts[][4] = {
     { 0.0f, 0.0f, 0.0f, 0.0f },     // CamPos
     { 0.0f, 0.0f, 0.0f, 0.0f },     // LightPos
     { 0.58f, 0.58f, 0.58f, 0.0f },  // Normal
+    { 0.0f, 0.0f, 0.0f, 0.0f }      // inShadowModelPosition
 };
 
 glm::vec3 lightVec = glm::vec3(0.0f);
 
-uint32_t WIDTH = 800;
-uint32_t HEIGHT = 600;
+uint32_t WIDTH = 2048;
+uint32_t HEIGHT = 860;
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 
@@ -465,7 +465,7 @@ public:
         V[7] = glm::vec3(posX + localPosX + sizeX, posY + localPosY + sizeY, posZ + localPosZ + sizeZ);
     }
 
-    void vUpdate () {
+    void setSize3D() {
         glm::mat4 mat(1.0f), rotMat;
         rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
                     glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
@@ -591,23 +591,11 @@ public:
     }
 
     bool isCollision3D(ColliderBox* target) {
-        bool a (false), b(false);
+        // 제일 작은 점과 제일 큰 점의 사이에 있는지 여부 ()
+        bool a (false), b (false);
+        // x, y, z가 최소인 V와 최대인 V
         glm::vec3 vmin(target->V[0]), vmax(target->V[7]);
         float vx(posX + localPosX), vy(posY + localPosY), vz(posZ + localPosZ);
-
-        glm::mat4 mat(1.0f), rotMat;
-        rotMat =    glm::rotate(mat, glm::radians(rotX), glm::vec3(1.0, 0.0, 0.0)) *
-                    glm::rotate(mat, glm::radians(rotY), glm::vec3(0.0, 1.0, 0.0)) *
-                    glm::rotate(mat, glm::radians(rotZ), glm::vec3(0.0, 0.0, 1.0));
-
-        V[0] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz - sizeZ, 1.0f);
-        V[1] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz - sizeZ, 1.0f);
-        V[2] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz - sizeZ, 1.0f);
-        V[3] = rotMat * glm::vec4(vx - sizeX, vy - sizeY, vz + sizeZ, 1.0f);
-        V[4] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz - sizeZ, 1.0f);
-        V[5] = rotMat * glm::vec4(vx + sizeX, vy - sizeY, vz + sizeZ, 1.0f);
-        V[6] = rotMat * glm::vec4(vx - sizeX, vy + sizeY, vz + sizeZ, 1.0f);
-        V[7] = rotMat * glm::vec4(vx + sizeX, vy + sizeY, vz + sizeZ, 1.0f);
 
         for (glm::vec3 v : this->V) {
             a = (v.x > vmin.x && v.y > vmin.y && v.z > vmin.z);
@@ -619,24 +607,6 @@ public:
         }
         return false;
     }
-
-    // bool isCollision3D(ColliderBox* target) {
-    //     bool x, y, z;
-    //     float px, py, pz, tx, ty, tz;
-
-    //     px = posX + localPosX;
-    //     py = posY + localPosY;
-    //     pz = posZ + localPosZ;
-    //     tx = target->posX + target->localPosX; 
-    //     ty = target->posY + target->localPosY; 
-    //     tz = target->posZ + target->localPosZ; 
-
-    //     x = !((px + sizeX) < (tx - target->sizeX) || (px - sizeX) > (tx + target->sizeX));
-    //     y = !((py + sizeY) < (ty - target->sizeY) || (py - sizeY) > (ty + target->sizeY));
-    //     z = !((pz + sizeZ) < (tz - target->sizeZ) || (pz - sizeZ) > (tz + target->sizeZ));
-
-    //     return (x && y) && z;
-    // }
 };
 
 // 그래픽스파이프라인 초기 속성 (per GameObject)
@@ -658,6 +628,10 @@ public:
     VkImage textureImage;
     VkDeviceMemory textureImageMemory;
     VkImageView textureImageView;
+
+    VkImage alphaTextureImage;
+    VkDeviceMemory alphaTextureImageMemory;
+    VkImageView alphaTextureImageView;
 
     std::vector<Vertex> vertices;
     std::vector<uint32_t> indices;
@@ -689,6 +663,7 @@ public:
 
     std::string objectPath;
     std::string texturePath;
+    std::string alphaPath;
 
     glm::vec3 Position;
     glm::vec3 Rotate;
@@ -701,6 +676,7 @@ public:
         
         this->objectPath = objPath;
         this->texturePath = textPath;
+        this->alphaPath = std::string("");
 
         Position = glm::vec3(0.0f);
         Rotate = glm::vec3(0.0f);
@@ -719,6 +695,7 @@ public:
 
         this->objectPath = objPath;
         this->texturePath = textPath;
+        this->alphaPath = std::string("");
 
         Position = glm::vec3(0.0f);
         Rotate = glm::vec3(0.0f);
@@ -737,6 +714,7 @@ public:
 
         this->objectPath = objPath;
         this->texturePath = textPath;
+        this->alphaPath = std::string("");
 
         this->Position = pos;
         this->Rotate = rot;
@@ -748,72 +726,6 @@ public:
         this->_initParam.topologyMode = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         this->_initParam.polygonMode = VK_POLYGON_MODE_FILL;
         this->_initParam.cullMode = VK_CULL_MODE_NONE;
-    }
-};
-
-class Transpose {
-public:
-    // 속도와 가속도
-    glm::vec3 velo;
-    glm::vec3 accel;
-
-    // 회전 속도와 회전 가속도
-    glm::vec3 torque;
-    glm::vec3 accelTorque;
-
-    void setVelocity(glm::vec3 vel) {
-        this->velo = vel;
-    }
-    void setAccel(glm::vec3 accel) {
-        this->accel = accel;
-    }
-
-    void setTorque(glm::vec3 torq) {
-        this->torque = torq;
-    }
-
-    void setAccelTorque(glm::vec3 accelTorq) {
-        this->accelTorque = accelTorq;
-    }
-
-    glm::vec3 getVelocity() {
-        return this->velo;
-    }
-    glm::vec3 getAccel() {
-        return this->accel;
-    }
-    glm::vec3 getTorque() {
-        return this->torque;
-    }
-    glm::vec3 getAccelTorque() {
-        return this->accelTorque;
-    }
-
-    // 초당 속도 계산기
-    glm::vec3 velBySec(float nanoSec) {
-        velo += accel * nanoSec;
-        return velo * nanoSec;
-    }
-
-    // 초당 토크 계산기
-    glm::vec3 torqBySec(float nanoSec) {
-        torque += accelTorque * nanoSec;
-        return torque * nanoSec;
-    }
-
-    void interaction(   GameObject* go,
-                        GameObject* target,
-                        float delta) 
-    {
-        glm::vec3 theta(go->Position - target->Position);   
-        float R = glm::length(theta);
-        
-        float zDegree = target->Rotation.z + 10.0f;
-        
-        this->velo = R * glm::vec3(     cos(glm::radians(zDegree)), 
-                                        sin(glm::radians(zDegree)), 
-                                        0
-                                    ) - go->Position;
     }
 };
 
@@ -839,6 +751,10 @@ public:
     glm::vec3 Scale;
 
     ColliderBox* collider;
+
+    // 속도와 가속도
+    glm::vec3 velo;
+    glm::vec3 accel;
 
     void createDescriptorSetLayout();
     void createComputePipeline();
@@ -867,10 +783,10 @@ public:
         this->collider = NULL;
     }
 
-    GameObject(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 Position, glm::vec3 Rotate, glm::vec3 Scale) {
+    GameObject(std::string Name, std::string objectPath, std::string texturePath, glm::vec3 Position, glm::vec3 Rotate, glm::vec3 Scale, std::string fragPath) {
         this->Name = Name; 
 
-        models.push_back(new Models(Name, objectPath, texturePath));
+        models.push_back(new Models(Name, objectPath, texturePath, fragPath));
 
         this->Position = Position;
         this->Rotation = Rotate;
@@ -892,13 +808,10 @@ public:
 
     void setRotate(glm::vec3 rot)           {   this->Rotation = rot;
                                                 this->Rotation.x *= -1;
-                                                if (this->collider) {
-                                                    this->collider->rotX = rot.x;
-                                                    this->collider->rotY = rot.y;
-                                                    this->collider->rotZ = rot.z;
 
-                                                    this->collider->vUpdate();
-                                                }
+                                                this->collider->rotX = Rotation.x;
+                                                this->collider->rotY = Rotation.y;
+                                                this->collider->rotZ = Rotation.z;
                                             }
 
     void setScale(glm::vec3 scale)          { this->Scale = scale; }
@@ -915,18 +828,15 @@ public:
                                                 this->collider->posX = this->Position.x;
                                                 this->collider->posY = this->Position.y;
                                                 this->collider->posZ = this->Position.z;
-                                                
-                                                this->collider->vUpdate();
+
+
                                             }
 
     void Rotate(glm::vec3 torq)             { 
                                                 this->Rotation += torq;
-
                                                 this->collider->rotX = this->Rotation.x;
                                                 this->collider->rotY = this->Rotation.y;
                                                 this->collider->rotZ = this->Rotation.z;
-
-                                                this->collider->vUpdate();
                                             }
 
     glm::vec3 getNormal() {
@@ -943,28 +853,26 @@ public:
         models.push_back(new Models(Name, objectPath, texturePath, pos, rot, scale));
     }
 
-    void setCollider(glm::vec3 scale) {
+    void adaptCollider(glm::vec3 scale) {
         this->collider = new ColliderBox();
 
         this->collider->setSize3D(this->Position, glm::vec3(0.0f), glm::vec3(0.0f), scale);
     }
 
-    void setCollider(glm::vec3 localPos, glm::vec3 scale) {
+    void adaptCollider(glm::vec3 localPos, glm::vec3 scale) {
         this->collider = new ColliderBox();
         this->collider->setSize3D(this->Position, localPos, glm::vec3(0.0f), scale);
     }
 
-    bool onColliderEnter(GameObject* go) {
-        if (!go->collider)
-            return false;
+    void setCollider() {
+        this->collider->setSize3D();
+    }
 
+    bool onColliderEnter(GameObject* go) {
         return this->collider->isCollisionEnter3D(go->collider);
     }
 
     bool onCollider(GameObject* go) {
-        if (!go->collider)
-            return false;
-
         return this->collider->isCollision3D(go->collider);
     }
 
@@ -1051,6 +959,12 @@ public:
 
             vkDestroyDescriptorPool(device, m->descriptorPool, nullptr);
 
+            if (!m->alphaPath.empty()) {
+                vkDestroyImageView(device, m->alphaTextureImageView, nullptr);
+
+                vkDestroyImage(device, m->alphaTextureImage, nullptr);
+                vkFreeMemory(device, m->alphaTextureImageMemory, nullptr);            
+            }
             vkDestroyImageView(device, m->textureImageView, nullptr);
 
             vkDestroyImage(device, m->textureImage, nullptr);
@@ -1062,6 +976,79 @@ public:
             vkDestroyBuffer(device, m->vertexBuffer, nullptr);
             vkFreeMemory(device, m->vertexBufferMemory, nullptr);
         }
+    }
+
+    // Transpose
+
+    // 회전 속도와 회전 가속도
+    glm::vec3 torque;
+    glm::vec3 accelTorque;
+
+    // Transpose 
+    void setVelocity(glm::vec3 vel) {
+        this->velo = vel;
+    }
+    void setAccel(glm::vec3 accel) {
+        this->accel = accel;
+    }
+
+    void setTorque(glm::vec3 torq) {
+        this->torque = torq;
+    }
+
+    void setAccelTorque(glm::vec3 accelTorq) {
+        this->accelTorque = accelTorq;
+    }
+
+    glm::vec3 getVelocity() {
+        return this->velo;
+    }
+    glm::vec3 getAccel() {
+        return this->accel;
+    }
+    glm::vec3 getTorque() {
+        return this->torque;
+    }
+    glm::vec3 getAccelTorque() {
+        return this->accelTorque;
+    }
+
+    // 초당 속도 계산기
+    glm::vec3 velBySec(float nanoSec) {
+        velo += accel * nanoSec;
+        return velo * nanoSec;
+    }
+
+    // 초당 토크 계산기
+    glm::vec3 torqBySec(float nanoSec) {
+        torque += accelTorque * nanoSec;
+        return torque * nanoSec;
+    }
+
+    // void interaction(GameObject* target, float delta) 
+    // {
+    //     // x축 길이
+    //     float R = glm::length(Position - target->Position);
+    //     // x, y축 기울기
+    //     float xGrad = (target->collider->V[1].y - target->collider->V[0].y) / (target->collider->V[1].x - target->collider->V[0].x);
+    //     // z축 토크 값
+    //     float zDegree = target->Rotation.z;
+
+    //     this->velo.y = R * cos(glm::radians(zDegree));
+    //     this->velo.x = -R * sin(glm::radians(zDegree));
+    // }
+
+    void interaction(   GameObject* target,
+                        float delta) 
+    {
+        glm::vec3 theta(Position - target->Position);   
+        float R = glm::length(theta);
+        float zDegree = target->Rotation.z;
+        
+        this->velo = R * glm::vec3(     cos(glm::radians(zDegree)), 
+                                        sin(glm::radians(zDegree)), 
+                                        0
+                                    ) - Position;
     }
 };
 

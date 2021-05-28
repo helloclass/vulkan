@@ -7,8 +7,8 @@ Camera* mainCam;
 Light* mainLight;
 
 GameObject* charactor;
-
-Transpose transpose;
+GameObject* charactor1;
+GameObject* charactor2;
 
 GameObject* skybox;
 GameObject* bottom;
@@ -28,31 +28,257 @@ glm::vec3 rightOfCam(0.0f);
 
 std::string getAbsolutePath();
 
-class standardRoutine : public routine {
-public:
-    void Awake() override{
-        routine::Awake();
+// // Physical 연산 클래스
+// class standardRoutine : public routine {
+// public:
+//     void Awake() override {
+//         routine::Awake();
 
-        std::string pwd = getAbsolutePath();
+//         std::string pwd = getAbsolutePath();
+
+//         mainCam = createCamera(glm::vec3(0.0f, 2.0f, 20.0f));
+//         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
+
+//         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
+//         charactor = createObject(   "body", 
+//                                     "models/charactor/body.obj", 
+//                                     "textures/charactor/body.png", 
+//                                     glm::vec3(-2.0f, 0.0f, 0.0f), 
+//                                     glm::vec3(0, -90, 0), 
+//                                     glm::vec3(1.0f), 
+//                                     "spv/GameObject/soft.spv"
+//                                 );
+
+//         charactor->appendModel(     "bow",
+//                                     "models/charactor/bow.obj", 
+//                                     "textures/charactor/bow.png", 
+//                                     "spv/GameObject/glass.spv"
+//                             );
+//         charactor->appendModel(     "clothes",
+//                                     "models/charactor/clothes.obj", 
+//                                     "textures/charactor/clothes.png", 
+//                                     "spv/GameObject/leather.spv"
+//                             );
+//         charactor->appendModel(     "hair",
+//                                     "models/charactor/hair.obj", 
+//                                     "textures/charactor/hair.png", 
+//                                     "spv/GameObject/clothes.spv"
+//                             );
+
+//         charactor->adaptCollider(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.5f, 1.0f, 0.5f));
+//         // charactor->drawCollider();
+
+//         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
+//         charactor1 = createObject(   "body", 
+//                                     "models/charactor/body.obj", 
+//                                     "textures/charactor/body.png", 
+//                                     glm::vec3(0.0f, 0.0f, 0.0f), 
+//                                     glm::vec3(0, -90, 0), 
+//                                     glm::vec3(1.0f), 
+//                                     "spv/GameObject/soft.spv"
+//                                 );
+
+//         charactor1->appendModel(     "bow",
+//                                     "models/charactor/bow.obj", 
+//                                     "textures/charactor/bow.png", 
+//                                     "spv/GameObject/glass.spv"
+//                             );
+//         charactor1->appendModel(     "clothes",
+//                                     "models/charactor/clothes.obj", 
+//                                     "textures/charactor/clothes.png", 
+//                                     "spv/GameObject/leather.spv"
+//                             );
+//         charactor1->appendModel(     "hair",
+//                                     "models/charactor/hair.obj", 
+//                                     "textures/charactor/hair.png", 
+//                                     "spv/GameObject/clothes.spv"
+//                             );
+
+//         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
+//         charactor2 = createObject(   "body", 
+//                                     "models/charactor/body.obj", 
+//                                     "textures/charactor/body.png", 
+//                                     glm::vec3(2.0f, 0.0f, 0.0f), 
+//                                     glm::vec3(0, -90, 0), 
+//                                     glm::vec3(1.0f), 
+//                                     "spv/GameObject/soft.spv"
+//                                 );
+
+//         charactor2->appendModel(     "bow",
+//                                     "models/charactor/bow.obj", 
+//                                     "textures/charactor/bow.png", 
+//                                     "spv/GameObject/glass.spv"
+//                             );
+//         charactor2->appendModel(     "clothes",
+//                                     "models/charactor/clothes.obj", 
+//                                     "textures/charactor/clothes.png", 
+//                                     "spv/GameObject/leather.spv"
+//                             );
+//         charactor2->appendModel(     "hair",
+//                                     "models/charactor/hair.obj", 
+//                                     "textures/charactor/hair.png", 
+//                                     "spv/GameObject/clothes.spv"
+//                             );
+
+//         // mainCam->target = charactor;
+
+//         lightPos = createObject(    "lightPos",
+//                                     "models/Light.obj", 
+//                                     "textures/Light.png", 
+//                                     mainLight->getPosition(), 
+//                                     glm::vec3(0.0f), 
+//                                     glm::vec3(0.1f), 
+//                                     "spv/GameObject/glass.spv");
+
+//         skybox = createObject(      "skybox", 
+//                                     "models/skybox/Cube.obj", 
+//                                     "textures/skybox/Cube.png",  
+//                                     glm::vec3(0.0f), 
+//                                     glm::vec3(0.0f), 
+//                                     glm::vec3(100.0f), 
+//                                     "spv/GameObject/base.spv");
+                                    
+//         skybox->models[0]->_initParam.cullMode = VK_CULL_MODE_NONE;
+
+//         // Collision Test
+//         bottom = createObject(  "Bottom", 
+//                                 "models/bottom.obj", 
+//                                 "textures/bottom.jpg", 
+//                                 glm::vec3(0.0f, 0.0f, 0.0f));
+
+//         bottom->adaptCollider(glm::vec3(0.0f, 0.1f, 0.0f), glm::vec3(10.0f, 0.5f, 10.0f));
+//         bottom->drawCollider();
+
+//         // UI
+//         button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 50.0f, 50.0f));
+//     }
+
+//     void Start() override {
+//         routine::Start();
+
+//         charactor->initObject();
+//         charactor1->initObject();
+//         charactor2->initObject();
+
+//         lightPos->initObject();
+//         skybox->initObject();
+
+//         bottom->initObject();
+//         button->initObject();
+
+//         bottom->torque = glm::vec3(0.0f, 0.0f, -10.0f);
+//     }
+
+//     void Update() override {
+//         routine::Update(); 
+        
+//         // Light Dot Object
+//         lightPos->setPosition(mainLight->getPosition());     
+
+//         // interactive with bottom
+//         if (charactor->onColliderEnter(bottom)) {
+//             charactor->velo = glm::vec3(0.0f, 0.0f, 0.0f);
+//             charactor->accel = glm::vec3(0.0f);
+//         }
+//         else if (charactor->onCollider(bottom)) {
+//             charactor->interaction(bottom, _TIME_PER_UPDATE);
+
+//             bottom->Rotate(bottom->torqBySec(_TIME_PER_UPDATE));
+//             bottom->setCollider();
+//         }
+//         else {
+//             // Gravity
+//             charactor->accel = glm::vec3(0, -2.0f, 0);
+//         }
+
+//         charactor->Move(charactor->velBySec(_TIME_PER_UPDATE));
+
+//         // 관측자 이동
+//         yOfCam = glm::radians(mainCam->getRotate().y);
+
+//         frontOfCam  = glm::vec3(sin(-yOfCam), 0.0f, cos(-yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+//         rightOfCam  = glm::vec3(cos(yOfCam), 0.0f, sin(yOfCam)) * camSpeed * _TIME_PER_UPDATE;
+
+//         if (!input::getKey(GLFW_KEY_LEFT_ALT)) {
+//             if (input::getKey(GLFW_KEY_W))
+//                 mainCam->moveZ(-frontOfCam);
+//             else if (input::getKey(GLFW_KEY_S))
+//                 mainCam->moveZ(frontOfCam);
+
+//             if (input::getKey(GLFW_KEY_A))
+//                 mainCam->moveX(-rightOfCam);
+//             else if (input::getKey(GLFW_KEY_D))
+//                 mainCam->moveX(rightOfCam);
+
+//             if (input::getKey(GLFW_KEY_Q))
+//                 mainCam->moveY(camSpeed * _TIME_PER_UPDATE);
+//             else if (input::getKey(GLFW_KEY_E))
+//                 mainCam->moveY(-camSpeed * _TIME_PER_UPDATE);
+//         }
+//         else {
+//             if (input::getKey(GLFW_KEY_W))
+//                 mainCam->pitch(-camQuart * _TIME_PER_UPDATE);
+//             else if (input::getKey(GLFW_KEY_S))
+//                 mainCam->pitch(camQuart * _TIME_PER_UPDATE);
+
+//             if (input::getKey(GLFW_KEY_A))
+//                 mainCam->yaw(-camQuart * _TIME_PER_UPDATE);
+//             else if (input::getKey(GLFW_KEY_D))
+//                 mainCam->yaw(camQuart * _TIME_PER_UPDATE);
+//         }
+
+//         // 빛 오브젝트 이동
+//         if (input::getKey(GLFW_KEY_UP)) {
+//             mainLight->move(glm::vec3(0.0f, 0.0f, -1.0f));
+//         }
+//         else if (input::getKey(GLFW_KEY_DOWN))
+//             mainLight->move(glm::vec3(0.0f, 0.0f, 1.0f));
+
+//         if (input::getKey(GLFW_KEY_LEFT))
+//             mainLight->move(glm::vec3(-1.0f, 0.0f, 0.0f));
+//         else if (input::getKey(GLFW_KEY_RIGHT))
+//             mainLight->move(glm::vec3(1.0f, 0.0f, 0.0f));
+
+//         if (input::getKey(GLFW_KEY_PAGE_UP))
+//             mainLight->move(glm::vec3(0.0f, -1.0f, 0.0f));
+//         else if (input::getKey(GLFW_KEY_PAGE_DOWN))
+//             mainLight->move(glm::vec3(0.0f, 1.0f, 0.0f));
+//     }
+
+//     void PhysicalUpdate() override{
+//         routine::PhysicalUpdate();
+//     }
+
+//     void End() override{
+//         routine::End();
+//     } 
+// };
+
+// 그림자 테스트
+class shadowRoutine : public routine {
+public:
+    void Awake() override {
+        routine::Awake();
 
         mainCam = createCamera(glm::vec3(0.0f, 2.0f, 20.0f));
         mainLight = createLight(glm::vec3(0.0f, 1.5f, 1.0f));
 
         // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
-        charactor = createObject(   "body", 
-                                    "models/charactor/body.obj", 
-                                    "textures/charactor/body.png", 
-                                    glm::vec3(5.0f, 5.0f, 0.0f), 
-                                    glm::vec3(0, 0, 0), 
-                                    glm::vec3(1.0f), 
-                                    std::string("spv/GameObject/soft.spv")
-                                );
-
-        charactor->appendModel(     "bow",
+        charactor = createObject(   "charactor",
                                     "models/charactor/bow.obj", 
                                     "textures/charactor/bow.png", 
+                                    glm::vec3(-2.0f, 0.0f, 0.0f), 
+                                    glm::vec3(0, 180, 0), 
+                                    glm::vec3(1.0f), 
                                     "spv/GameObject/glass.spv"
                             );
+
+        charactor->appendModel(     "body", 
+                                    "models/charactor/body.obj", 
+                                    "textures/charactor/body.png", 
+                                    "spv/GameObject/soft.spv"
+                                );
+
         charactor->appendModel(     "clothes",
                                     "models/charactor/clothes.obj", 
                                     "textures/charactor/clothes.png", 
@@ -64,10 +290,62 @@ public:
                                     "spv/GameObject/clothes.spv"
                             );
 
-        charactor->setCollider(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.5f, 1.0f, 0.5f));
-        charactor->drawCollider();
+        charactor->adaptCollider(glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.5f, 1.0f, 0.5f));
+        // charactor->drawCollider();
+        
+        charactor->find("body")->alphaPath = "textures/charactor/bow.png";
 
-        // mainCam->target = charactor;
+        // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
+        charactor1 = createObject(   "charactor1", 
+                                    "models/charactor/body.obj", 
+                                    "textures/charactor/body.png", 
+                                    glm::vec3(0.0f, 0.0f, 0.0f), 
+                                    glm::vec3(0, 180, 0), 
+                                    glm::vec3(1.0f), 
+                                    "spv/GameObject/soft.spv"
+                                );
+
+        charactor1->appendModel(     "bow",
+                                    "models/charactor/bow.obj", 
+                                    "textures/charactor/bow.png", 
+                                    "spv/GameObject/glass.spv"
+                            );
+        charactor1->appendModel(     "clothes",
+                                    "models/charactor/clothes.obj", 
+                                    "textures/charactor/clothes.png", 
+                                    "spv/GameObject/leather.spv"
+                            );
+        charactor1->appendModel(     "hair",
+                                    "models/charactor/hair.obj", 
+                                    "textures/charactor/hair.png", 
+                                    "spv/GameObject/clothes.spv"
+                            );
+
+        // Duplication 함수 생성으로 instance(캐릭터 값, 위치, 로테이션)하면 drawFrame에서 여러번 돌릴 수 있도록 만들어보자
+        charactor2 = createObject(   "charactor2", 
+                                    "models/charactor/body.obj", 
+                                    "textures/charactor/body.png", 
+                                    glm::vec3(2.0f, 0.0f, 0.0f), 
+                                    glm::vec3(0, 180, 0), 
+                                    glm::vec3(1.0f), 
+                                    "spv/GameObject/soft.spv"
+                                );
+
+        charactor2->appendModel(     "bow",
+                                    "models/charactor/bow.obj", 
+                                    "textures/charactor/bow.png", 
+                                    "spv/GameObject/glass.spv"
+                            );
+        charactor2->appendModel(     "clothes",
+                                    "models/charactor/clothes.obj", 
+                                    "textures/charactor/clothes.png", 
+                                    "spv/GameObject/leather.spv"
+                            );
+        charactor2->appendModel(     "hair",
+                                    "models/charactor/hair.obj", 
+                                    "textures/charactor/hair.png", 
+                                    "spv/GameObject/clothes.spv"
+                            );
 
         lightPos = createObject(    "lightPos",
                                     "models/Light.obj", 
@@ -91,27 +369,24 @@ public:
         bottom = createObject(  "Bottom", 
                                 "models/bottom.obj", 
                                 "textures/bottom.jpg", 
-                                glm::vec3(0.0f, 0.0f, 0.0f));
+                                glm::vec3(0.0f, -0.5f, 0.0f));
 
-        bottom->setCollider(glm::vec3(0.0f, 0.1f, 0.0f), glm::vec3(10.0f, 0.5f, 10.0f));
-        bottom->drawCollider();
+        bottom->adaptCollider(glm::vec3(0.0f, 0.1f, 0.0f), glm::vec3(10.0f, 0.5f, 10.0f));
+        // bottom->drawCollider();
 
-        // UI
-        button = createUI("Button", true, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec4(0.0f, 0.0f, 50.0f, 50.0f));
+        // mainCam->target = charactor;
     }
 
     void Start() override {
         routine::Start();
 
         charactor->initObject();
+        charactor1->initObject();
+        charactor2->initObject();
 
         lightPos->initObject();
         skybox->initObject();
-
         bottom->initObject();
-        button->initObject();
-
-        transpose.torque = glm::vec3(0.0f, 0.0f, 5.0f);
     }
 
     void Update() override {
@@ -119,23 +394,6 @@ public:
         
         // Light Dot Object
         lightPos->setPosition(mainLight->getPosition());     
-
-        // interactive with bottom
-        if (charactor->onColliderEnter(bottom)) {
-            transpose.velo = glm::vec3(0.0f, 0.0f, 0.0f);
-            transpose.accel = glm::vec3(0.0f);
-        }
-        else if (charactor->onCollider(bottom)) {
-            transpose.interaction(charactor->Position, bottom->Position, charactor->Rotation, bottom->Rotation, _TIME_PER_UPDATE);
-
-            bottom->Rotate(transpose.torqBySec(_TIME_PER_UPDATE));
-        }
-        else {
-            // Gravity
-            transpose.accel = glm::vec3(0, -2.0f, 0);
-        }
-
-        charactor->Move(transpose.velBySec(_TIME_PER_UPDATE));
 
         // 관측자 이동
         yOfCam = glm::radians(mainCam->getRotate().y);
@@ -171,22 +429,24 @@ public:
                 mainCam->yaw(camQuart * _TIME_PER_UPDATE);
         }
 
+        float lightSpeed = 30.0f;
+
         // 빛 오브젝트 이동
         if (input::getKey(GLFW_KEY_UP)) {
-            mainLight->move(glm::vec3(0.0f, 0.0f, -1.0f));
+            mainLight->move(glm::vec3(0.0f, 0.0f, -1.0f * lightSpeed));
         }
         else if (input::getKey(GLFW_KEY_DOWN))
-            mainLight->move(glm::vec3(0.0f, 0.0f, 1.0f));
+            mainLight->move(glm::vec3(0.0f, 0.0f, 1.0f * lightSpeed));
 
         if (input::getKey(GLFW_KEY_LEFT))
-            mainLight->move(glm::vec3(-1.0f, 0.0f, 0.0f));
+            mainLight->move(glm::vec3(-1.0f * lightSpeed, 0.0f, 0.0f));
         else if (input::getKey(GLFW_KEY_RIGHT))
-            mainLight->move(glm::vec3(1.0f, 0.0f, 0.0f));
+            mainLight->move(glm::vec3(1.0f * lightSpeed, 0.0f, 0.0f));
 
         if (input::getKey(GLFW_KEY_PAGE_UP))
-            mainLight->move(glm::vec3(0.0f, -1.0f, 0.0f));
+            mainLight->move(glm::vec3(0.0f, -1.0f * lightSpeed, 0.0f));
         else if (input::getKey(GLFW_KEY_PAGE_DOWN))
-            mainLight->move(glm::vec3(0.0f, 1.0f, 0.0f));
+            mainLight->move(glm::vec3(0.0f, 1.0f * lightSpeed, 0.0f));
     }
 
     void PhysicalUpdate() override{
@@ -204,7 +464,8 @@ void batchUI();
 uint32_t getUIIdx();
 
 int main() {
-    standardRoutine rt;
+    // standardRoutine rt;
+    shadowRoutine rt;
 
     _UIMAP = new char*[HEIGHT];
     for (int i = 0; i< HEIGHT; i++) {

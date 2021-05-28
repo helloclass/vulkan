@@ -2,13 +2,16 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(binding = 1) uniform sampler2D texSampler;
+layout(set = 0, binding = 2) uniform sampler2D alphaSampler;
 
 layout(location = 0) in vec2 fragTexCoord;
 layout(location = 1) in vec3 normalVector;
 layout(location = 2) in vec3 lightPosition;
 layout(location = 3) in vec3 cameraPosition;
 layout(location = 4) in vec3 halfPosition;
-layout(location = 5) in mat3 modelMatrix;
+layout(location = 5) in vec3 testshadow;
+layout(location = 6) in mat3 modelMatrix;
+layout(location = 9) in float attenuation;
 
 layout(location = 0) out vec4 outColor;
 
@@ -20,17 +23,20 @@ struct Material {
 }; 
 
 void main() {
-    vec3 lightColor = vec3( 1.0f );
+    outColor = min(vec4(dot(normalVector, lightPosition)) * 10.0f , 0.2f);
+
+    vec3 lightColor = vec3(1.0f, 0.5f, 0.5f);
 
     Material material;
+
     // 주변광
-    material.ambient    = vec3 ( 0.3f );
+    material.ambient = vec3 ( 0.2f );
     // 산광
-    material.diffuse    = vec3 ( 0.0f, 0.0f, 0.4f );
+    material.diffuse    = vec3 ( 1.0f );
     // 반사광
-    material.specular   = vec3 ( 0.8f );
+    material.specular   = vec3 ( normalize(texture(texSampler, fragTexCoord)) * 10.0f );
     // 반사광 집중도
-    material.shininess  = ( 32.0f );
+    material.shininess  = ( 128.0f );
 
     // Ambient
     vec3 ambient = vec3(1.0) * lightColor * material.ambient;
@@ -40,10 +46,11 @@ void main() {
 
     vec3 lightDir = normalize(lightPosition - modelMatrix * halfPosition);
 
-    float diff = max(dot(norm, lightDir), 0.7f);
+    float diff = max(dot(norm, lightDir), 0.3f);
     vec3 diffuse = vec3(1.0) * lightColor * (diff * material.diffuse );
 
     // Specular
+    // 방향성과 크기 또한 고려되는 법선 벡터
     norm = transpose(inverse(modelMatrix)) * normalVector;
     vec3 viewDir = normalize(cameraPosition - modelMatrix * halfPosition);
     vec3 reflectDir = reflect(-lightDir, norm);
@@ -51,5 +58,9 @@ void main() {
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     vec3 specular = vec3(1.0) * spec * lightColor * material.specular;
 
-    outColor = texture(texSampler, fragTexCoord) * vec4(ambient + diffuse + specular, 1.0f);
+    ambient *= attenuation;
+    diffuse *= attenuation;
+    specular *= attenuation;
+
+    outColor += texture(texSampler, fragTexCoord) * vec4(ambient + diffuse + specular, 1.0f) * vec4(testshadow, 1.0f);
 }
